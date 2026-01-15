@@ -42,7 +42,6 @@ const AdminChangePasswordModal = ({ isOpen, onClose, user, onPasswordChanged }) 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
             <div className="bg-gray-800 dark:bg-white rounded-xl p-6 w-full max-w-md border border-gray-700 dark:border-gray-200 shadow-2xl">
-                {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-white dark:text-gray-900">Zmień hasło użytkownika</h2>
                     <button
@@ -53,15 +52,12 @@ const AdminChangePasswordModal = ({ isOpen, onClose, user, onPasswordChanged }) 
                     </button>
                 </div>
 
-                {/* User Info */}
                 <div className="mb-6 p-3 bg-gray-700/30 dark:bg-gray-100 rounded-lg border border-gray-600 dark:border-gray-300">
                     <p className="text-sm text-gray-400 dark:text-gray-600">Użytkownik</p>
                     <p className="text-white dark:text-gray-900 font-semibold">{user.email}</p>
                 </div>
 
-                {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* New Password */}
                     <div>
                         <label className="block text-sm font-medium text-gray-300 dark:text-gray-700 mb-2">
                             Nowe hasło
@@ -85,7 +81,6 @@ const AdminChangePasswordModal = ({ isOpen, onClose, user, onPasswordChanged }) 
                         </div>
                     </div>
 
-                    {/* Confirm Password */}
                     <div>
                         <label className="block text-sm font-medium text-gray-300 dark:text-gray-700 mb-2">
                             Potwierdź nowe hasło
@@ -100,14 +95,12 @@ const AdminChangePasswordModal = ({ isOpen, onClose, user, onPasswordChanged }) 
                         />
                     </div>
 
-                    {/* Error Message */}
                     {error && (
                         <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3">
                             <p className="text-red-400 text-sm">{error}</p>
                         </div>
                     )}
 
-                    {/* Buttons */}
                     <div className="flex gap-3 pt-2">
                         <button
                             type="button"

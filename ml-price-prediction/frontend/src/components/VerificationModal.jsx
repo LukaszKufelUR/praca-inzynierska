@@ -68,10 +68,8 @@ const VerificationModal = ({ isOpen, onClose, predictionId }) => {
 
         const safeActualData = Array.isArray(actual_data) ? actual_data : [];
 
-        // Get prediction creation date
         const predictionDate = prediction.created_at ? new Date(prediction.created_at).toISOString().split('T')[0] : null;
 
-        // Create a map of actual data
         const dataMap = new Map();
         safeActualData.forEach(item => {
             if (item && item.Date) {
@@ -80,13 +78,12 @@ const VerificationModal = ({ isOpen, onClose, predictionId }) => {
 
                 dataMap.set(item.Date, {
                     date: item.Date,
-                    historical: isPastPrediction ? item.Close : null,  // Historical data (before prediction)
-                    actualFromPrediction: !isPastPrediction ? item.Close : null  // Actual prices from prediction date forward
+                    historical: isPastPrediction ? item.Close : null,
+                    actualFromPrediction: !isPastPrediction ? item.Close : null
                 });
             }
         });
 
-        // Merge Prophet data
         prophetData.forEach(item => {
             if (item && item.ds) {
                 const date = item.ds.split('T')[0];
@@ -98,7 +95,6 @@ const VerificationModal = ({ isOpen, onClose, predictionId }) => {
             }
         });
 
-        // Merge LSTM data
         lstmData.forEach(item => {
             if (item && item.ds) {
                 const date = item.ds.split('T')[0];
@@ -110,7 +106,6 @@ const VerificationModal = ({ isOpen, onClose, predictionId }) => {
             }
         });
 
-        // Convert map to sorted array
         return Array.from(dataMap.values()).sort((a, b) => new Date(a.date) - new Date(b.date));
     };
 
@@ -143,7 +138,6 @@ const VerificationModal = ({ isOpen, onClose, predictionId }) => {
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
             <div className="bg-gray-800 dark:bg-white rounded-xl w-full max-w-4xl border border-gray-700 dark:border-gray-200 shadow-2xl flex flex-col max-h-[90vh]">
-                {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-700 dark:border-gray-200">
                     <div className="flex items-center gap-3">
                         <CheckCircle className="w-6 h-6 text-green-400" />
@@ -157,7 +151,6 @@ const VerificationModal = ({ isOpen, onClose, predictionId }) => {
                     </button>
                 </div>
 
-                {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6">
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-12 text-gray-400">
@@ -171,7 +164,6 @@ const VerificationModal = ({ isOpen, onClose, predictionId }) => {
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            {/* Metrics Panel */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {data.metrics.prophet && (
                                     <div className="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
@@ -217,7 +209,6 @@ const VerificationModal = ({ isOpen, onClose, predictionId }) => {
                                 )}
                             </div>
 
-                            {/* Chart */}
                             <div className="bg-gray-900/50 dark:bg-gray-100 rounded-lg p-4 border border-gray-700 dark:border-gray-300 h-[400px]">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>

@@ -6,7 +6,7 @@ import ThemeToggle from './ThemeToggle';
 import MarketMovers from './MarketMovers';
 
 const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavorite, isAuthenticated, onLogin, onRegister, onOpenSettings, onOpenHistory, onOpenAdmin }) => {
-    const [activeTab, setActiveTab] = useState('stock'); // 'stock' or 'crypto'
+    const [activeTab, setActiveTab] = useState('stock');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -31,13 +31,12 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
         };
 
         fetchMarketData();
-        const interval = setInterval(fetchMarketData, 5 * 60 * 1000); // 5 min
+        const interval = setInterval(fetchMarketData, 5 * 60 * 1000);
         return () => clearInterval(interval);
     }, []);
 
     const [recentSearches, setRecentSearches] = useState([]);
 
-    // Load recent searches from local storage
     useEffect(() => {
         const saved = localStorage.getItem('recentSearches');
         if (saved) {
@@ -49,7 +48,6 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
         }
     }, []);
 
-    // Debounced search
     useEffect(() => {
         const timer = setTimeout(async () => {
             if (searchQuery.length >= 2) {
@@ -86,7 +84,6 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
         return () => clearTimeout(timer);
     }, [searchQuery, assets]);
 
-    // Fetch prices for search results that are missing from marketMovers
     useEffect(() => {
         if (searchResults.length === 0) return;
 
@@ -97,13 +94,11 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
 
             if (missingAssets.length === 0) return;
 
-            // Limit to top 5 to avoid spamming API
             const toFetch = missingAssets.slice(0, 5);
 
             const newPrices = {};
             await Promise.all(toFetch.map(async (asset) => {
                 try {
-                    // Fetch compact history
                     const response = await api.getHistoricalData(asset.symbol, '5d');
                     if (response && response.data && response.data.length >= 2) {
                         const history = response.data;
@@ -123,7 +118,6 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
                         }
                     }
                 } catch (err) {
-                    // Silent fail for individual search items
                 }
             }));
 
@@ -147,22 +141,18 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
         addToRecent(asset);
     };
 
-    // Filter helpers
     const isCrypto = (asset) => asset.type === 'crypto';
     const isStock = (asset) => asset.type === 'index' || asset.type === 'stock';
     const matchesTab = (asset) => activeTab === 'stock' ? isStock(asset) : isCrypto(asset);
 
-    // Categorize assets
     const favoriteAssets = assets.filter(a => favorites.includes(a.symbol) && matchesTab(a));
     const popularAssets = assets.filter(a => matchesTab(a) && !favorites.includes(a.symbol));
     const recentAssets = recentSearches.filter(a => matchesTab(a) && !favorites.includes(a.symbol));
 
 
-    // Helper to get custom props for AssetItem
-    // Helper to get custom props for AssetItem
     const getAssetProps = (asset) => ({
         asset: asset,
-        marketData: marketMovers[asset.symbol] || searchPrices[asset.symbol], // Pass market data here (primary or searched)
+        marketData: marketMovers[asset.symbol] || searchPrices[asset.symbol],
         isSelected: selectedAsset === asset.symbol,
         onSelect: () => handleSelect(asset),
         onToggleFavorite: onToggleFavorite
@@ -170,7 +160,6 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
 
     return (
         <div className="w-80 border-r border-gray-800 dark:border-gray-200 bg-gray-900/50 dark:bg-white backdrop-blur-xl flex flex-col h-screen fixed left-0 top-0 z-50 transition-colors duration-300">
-            {/* Header */}
             <div className="p-6 border-b border-gray-800 dark:border-gray-200">
                 <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-3">
@@ -186,7 +175,6 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
                 <p className="text-xs text-gray-500 dark:text-gray-600 ml-11">Inteligentna Analiza Rynków</p>
             </div>
 
-            {/* Tabs */}
             <div className="flex border-b border-gray-800 dark:border-gray-200">
                 <button
                     onClick={() => setActiveTab('stock')}
@@ -229,7 +217,6 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
                 </button>
             </div>
 
-            {/* Content Area */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
                 {activeTab === 'trending' ? (
                     <div className="p-4">
@@ -237,7 +224,6 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
                     </div>
                 ) : (
                     <div className="pb-4 space-y-2">
-                        {/* Search Input Container */}
                         <div className="px-4 py-3 sticky top-0 bg-gray-900/95 dark:bg-white/95 backdrop-blur z-10">
                             <div className="relative group mb-1">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400 group-focus-within:text-primary-500 transition-colors" />
@@ -246,7 +232,7 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
                                     placeholder="Szukaj aktywa..."
                                     value={searchQuery}
                                     onFocus={() => setIsSearchFocused(true)}
-                                    onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)} // Delay to allow click
+                                    onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="w-full bg-gray-800/50 dark:bg-gray-100 border border-gray-700 dark:border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white dark:text-gray-900 placeholder-gray-500 dark:placeholder-gray-400 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/50 outline-none transition-all"
                                 />
@@ -256,9 +242,7 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
                             </div>
                         </div>
 
-                        {/* RENDER LOGIC */}
                         {searchQuery.length >= 2 ? (
-                            // 1. Search Results (Query Active)
                             <div>
                                 <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-600 uppercase tracking-wider mb-1">
                                     Wyniki wyszukiwania
@@ -280,7 +264,6 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
                                 )}
                             </div>
                         ) : isSearchFocused && recentAssets.length > 0 ? (
-                            // 2. Recent Searches (Focus Active + Empty Query)
                             <div>
                                 <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-600 uppercase tracking-wider flex items-center gap-2 mb-1">
                                     <Clock className="w-3 h-3" />
@@ -295,9 +278,7 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
                                 ))}
                             </div>
                         ) : (
-                            // 3. Default View (No Focus, No Query) -> Favorites & Popular
                             <>
-                                {/* Favorites */}
                                 {favoriteAssets.length > 0 && (
                                     <div>
                                         <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-600 uppercase tracking-wider flex items-center gap-2 mb-1">
@@ -314,7 +295,6 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
                                     </div>
                                 )}
 
-                                {/* Popular */}
                                 <div>
                                     <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-600 uppercase tracking-wider mb-1">
                                         Popularne
@@ -333,7 +313,6 @@ const Sidebar = ({ selectedAsset, onSelect, assets, favorites = [], onToggleFavo
                 )}
             </div>
 
-            {/* Footer / User */}
             <div className="p-4 border-t border-gray-800 dark:border-gray-200">
                 {isAuthenticated ? (
                     <UserDropdown
@@ -386,7 +365,6 @@ const AssetItem = ({ asset, isSelected, onSelect, isFavorite, onToggleFavorite, 
                     )}
                 </div>
 
-                {/* 24h Change Badge */}
                 {marketData && (
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${marketData.change >= 0
                         ? 'bg-emerald-500/10 text-emerald-500'

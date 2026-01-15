@@ -60,3 +60,9 @@ frontend/.vite/
 # Logs
 *.log
 logs/
+
+# Database
+backend/ml_predictions.db
+
+# Docker
+.dockerignore

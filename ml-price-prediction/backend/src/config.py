@@ -1,10 +1,4 @@
-"""
-Configuration file for ML Price Prediction System
-"""
-
-# Supported assets
 ASSETS = {
-    # Stock Indices
     "^GSPC": {"name": "S&P 500", "type": "index"},
     "^IXIC": {"name": "NASDAQ", "type": "index"},
     "^WIG20": {"name": "WIG20", "type": "index"},
@@ -14,7 +8,6 @@ ASSETS = {
     "^N225": {"name": "Nikkei 225 (Japan)", "type": "index"},
     "^FCHI": {"name": "CAC 40 (France)", "type": "index"},
 
-    # Popular Stocks (US)
     "AAPL": {"name": "Apple Inc.", "type": "stock"},
     "MSFT": {"name": "Microsoft Corp.", "type": "stock"},
     "GOOGL": {"name": "Alphabet Inc. (Google)", "type": "stock"},
@@ -26,7 +19,6 @@ ASSETS = {
     "AMD": {"name": "AMD", "type": "stock"},
     "INTC": {"name": "Intel Corp.", "type": "stock"},
 
-    # Popular Stocks (PL)
     "CDR.WA": {"name": "CD Projekt", "type": "stock"},
     "PKO.WA": {"name": "PKO BP", "type": "stock"},
     "KGH.WA": {"name": "KGHM", "type": "stock"},
@@ -36,7 +28,6 @@ ASSETS = {
     "LPP.WA": {"name": "LPP", "type": "stock"},
     "PEO.WA": {"name": "Pekao SA", "type": "stock"},
     
-    # Cryptocurrencies
     "BTC-USD": {"name": "Bitcoin", "type": "crypto"},
     "ETH-USD": {"name": "Ethereum", "type": "crypto"},
     "SOL-USD": {"name": "Solana", "type": "crypto"},
@@ -59,24 +50,19 @@ ASSETS = {
     "TRX-USD": {"name": "TRON", "type": "crypto"},
 }
 
-# Prediction horizons (in days)
 PREDICTION_HORIZONS = [7, 14, 30]
 
-# Data fetching settings
-DEFAULT_HISTORY_PERIOD = "2y"  # 2 years of historical data
-CACHE_EXPIRY_HOURS = 1  # Cache data for 1 hour
+DEFAULT_HISTORY_PERIOD = "2y"
+CACHE_EXPIRY_HOURS = 1
 
-# LSTM model parameters
-LSTM_LOOKBACK_DAYS = 60  # Use 60 days of history to predict next day
+LSTM_LOOKBACK_DAYS = 60
 LSTM_EPOCHS = 50
 LSTM_BATCH_SIZE = 32
 LSTM_VALIDATION_SPLIT = 0.2
 
-# Prophet model parameters
 PROPHET_CHANGEPOINT_PRIOR_SCALE = 0.05
 PROPHET_SEASONALITY_PRIOR_SCALE = 10
 
-# Model storage paths
 PROPHET_MODEL_DIR = "saved_models/prophet"
 LSTM_MODEL_DIR = "saved_models/lstm"
 CACHE_DIR = "data/cache"

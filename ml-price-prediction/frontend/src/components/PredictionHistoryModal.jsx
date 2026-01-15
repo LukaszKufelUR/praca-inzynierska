@@ -20,7 +20,7 @@ const PredictionHistoryModal = ({ isOpen, onClose, onLoadPrediction }) => {
         setLoading(true);
         setError(null);
         try {
-            const data = await api.getPredictionHistory(50); // Get last 50 predictions
+            const data = await api.getPredictionHistory(50);
             setHistory(data);
         } catch (err) {
             setError('Nie udało się pobrać historii prognoz');
@@ -40,7 +40,6 @@ const PredictionHistoryModal = ({ isOpen, onClose, onLoadPrediction }) => {
             setHistory(history.filter(item => item.id !== id));
         } catch (err) {
             console.error('Failed to delete prediction', err);
-            // Optionally show error toast
         } finally {
             setDeletingId(null);
         }
@@ -52,7 +51,6 @@ const PredictionHistoryModal = ({ isOpen, onClose, onLoadPrediction }) => {
         <>
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                 <div className="bg-gray-800 dark:bg-white rounded-xl w-full max-w-2xl border border-gray-700 dark:border-gray-200 shadow-2xl flex flex-col max-h-[80vh]">
-                    {/* Header */}
                     <div className="flex items-center justify-between p-6 border-b border-gray-700 dark:border-gray-200">
                         <div className="flex items-center gap-3">
                             <TrendingUp className="w-6 h-6 text-primary-400" />
@@ -66,7 +64,6 @@ const PredictionHistoryModal = ({ isOpen, onClose, onLoadPrediction }) => {
                         </button>
                     </div>
 
-                    {/* Content */}
                     <div className="flex-1 overflow-y-auto p-6">
                         {loading ? (
                             <div className="flex flex-col items-center justify-center py-12 text-gray-400">

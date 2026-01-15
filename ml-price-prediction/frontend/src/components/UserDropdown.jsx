@@ -7,7 +7,6 @@ const UserDropdown = ({ onOpenSettings, onOpenHistory, onOpenAdmin, isDropUp = f
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
 
-    // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -31,7 +30,6 @@ const UserDropdown = ({ onOpenSettings, onOpenHistory, onOpenAdmin, isDropUp = f
 
     return (
         <div className="relative w-full" ref={dropdownRef}>
-            {/* Dropdown Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="w-full flex items-center justify-between gap-2 bg-gray-800 dark:bg-gray-200 hover:bg-gray-700 dark:hover:bg-gray-300 text-white dark:text-gray-900 px-3 py-2 rounded-lg transition-colors border border-gray-700 dark:border-gray-300"
@@ -45,7 +43,6 @@ const UserDropdown = ({ onOpenSettings, onOpenHistory, onOpenAdmin, isDropUp = f
                 <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            {/* Dropdown Menu */}
             {isOpen && (
                 <div className={`absolute right-0 left-0 ${isDropUp ? 'bottom-full mb-2' : 'top-full mt-2'} bg-gray-800 dark:bg-white border border-gray-700 dark:border-gray-300 rounded-lg shadow-xl z-50 overflow-hidden`}>
                     <button

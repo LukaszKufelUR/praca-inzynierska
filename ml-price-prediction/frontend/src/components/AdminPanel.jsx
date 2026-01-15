@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Loader2, Users, TrendingUp, Star, UserPlus, Key, Download } from 'lucide-react';
 import { api } from '../services/api';
 import AdminChangePasswordModal from './AdminChangePasswordModal';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const AdminPanel = ({ isOpen, onClose }) => {
     const [users, setUsers] = useState([]);
@@ -36,7 +38,6 @@ const AdminPanel = ({ isOpen, onClose }) => {
 
     const handlePasswordChanged = () => {
         setSelectedUser(null);
-        // Optionally show success message
     };
 
     const handleDeleteUser = async (user) => {
@@ -52,7 +53,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
         try {
             await api.deleteUser(user.id);
             alert(`Użytkownik ${user.email} został usunięty`);
-            loadData(); // Reload data
+            loadData();
         } catch (err) {
             alert(err.response?.data?.detail || 'Nie udało się usunąć użytkownika');
             console.error(err);
@@ -144,11 +145,14 @@ const AdminPanel = ({ isOpen, onClose }) => {
             font-weight: 600;
         }
         .badge {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 14px;
             font-weight: 600;
+            line-height: 1.2;
         }
         .badge-admin {
             background: #e0d4fc;
@@ -274,16 +278,35 @@ const AdminPanel = ({ isOpen, onClose }) => {
 </html>
         `.trim();
 
-        // Create blob and download
-        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `raport_uzytkownika_${user.email.replace('@', '_')}_${new Date().toISOString().split('T')[0]}.html`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'absolute';
+        iframe.style.width = '800px';
+        iframe.style.height = '1200px';
+        iframe.style.left = '-9999px';
+        iframe.style.top = '0';
+        document.body.appendChild(iframe);
+
+        const iframeDoc = iframe.contentWindow.document;
+        iframeDoc.open();
+        iframeDoc.write(htmlContent);
+        iframeDoc.close();
+
+        setTimeout(() => {
+            const bodyHeight = iframeDoc.body.scrollHeight;
+            iframe.style.height = bodyHeight + 'px';
+
+            html2canvas(iframeDoc.body, { scale: 1.5, useCORS: true, windowWidth: 800, height: bodyHeight }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save(`raport_uzytkownika_${user.email.replace('@', '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+
+                document.body.removeChild(iframe);
+            });
+        }, 500);
     };
 
     const generateAllUsersReport = () => {
@@ -306,7 +329,6 @@ const AdminPanel = ({ isOpen, onClose }) => {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 40px 20px;
-            min-height: 100vh;
         }
         .container {
             max-width: 1200px;
@@ -491,16 +513,52 @@ const AdminPanel = ({ isOpen, onClose }) => {
 </html>
         `.trim();
 
-        // Create blob and download
-        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `raport_wszystkich_uzytkownikow_${new Date().toISOString().split('T')[0]}.html`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'absolute';
+        iframe.style.width = '1200px';
+        iframe.style.height = '1200px';
+        iframe.style.left = '-9999px';
+        iframe.style.top = '0';
+        document.body.appendChild(iframe);
+
+        const iframeDoc = iframe.contentWindow.document;
+        iframeDoc.open();
+        iframeDoc.write(htmlContent);
+        iframeDoc.close();
+
+        setTimeout(() => {
+            const bodyHeight = iframeDoc.body.scrollHeight;
+            iframe.style.height = bodyHeight + 'px';
+
+            html2canvas(iframeDoc.body, { scale: 1.5, useCORS: true, windowWidth: 1200, height: bodyHeight }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('l', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+                if (pdfHeight > pdf.internal.pageSize.getHeight()) {
+                    const pageHeight = pdf.internal.pageSize.getHeight();
+                    let heightLeft = pdfHeight;
+                    let position = 0;
+
+                    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+                    heightLeft -= pageHeight;
+
+                    while (heightLeft >= 0) {
+                        position = heightLeft - pdfHeight;
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+                        heightLeft -= pageHeight;
+                    }
+                } else {
+                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                }
+
+                pdf.save(`raport_wszystkich_uzytkownikow_${new Date().toISOString().split('T')[0]}.pdf`);
+
+                document.body.removeChild(iframe);
+            });
+        }, 500);
     };
 
     if (!isOpen) return null;
@@ -509,7 +567,6 @@ const AdminPanel = ({ isOpen, onClose }) => {
         <>
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                 <div className="bg-gray-800 dark:bg-white rounded-xl w-full max-w-6xl border border-gray-700 dark:border-gray-200 shadow-2xl flex flex-col max-h-[90vh]">
-                    {/* Header */}
                     <div className="flex items-center justify-between p-6 border-b border-gray-700 dark:border-gray-200">
                         <div className="flex items-center gap-3">
                             <Users className="w-6 h-6 text-primary-400" />
@@ -533,7 +590,6 @@ const AdminPanel = ({ isOpen, onClose }) => {
                         </div>
                     </div>
 
-                    {/* Content */}
                     <div className="flex-1 overflow-y-auto p-6">
                         {loading ? (
                             <div className="flex flex-col items-center justify-center py-12 text-gray-400">
@@ -552,7 +608,6 @@ const AdminPanel = ({ isOpen, onClose }) => {
                             </div>
                         ) : (
                             <div className="space-y-6">
-                                {/* Stats */}
                                 {stats && (
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                         <div className="bg-gray-700/30 dark:bg-gray-100 rounded-lg p-4 border border-gray-600 dark:border-gray-300">
@@ -594,7 +649,6 @@ const AdminPanel = ({ isOpen, onClose }) => {
                                     </div>
                                 )}
 
-                                {/* Users Table */}
                                 <div className="bg-gray-700/30 dark:bg-gray-100 rounded-lg border border-gray-600 dark:border-gray-300 overflow-hidden">
                                     <div className="overflow-x-auto">
                                         <table className="w-full">

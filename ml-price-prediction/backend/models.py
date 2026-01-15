@@ -9,17 +9,15 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    is_admin = Column(Integer, default=0)  # 0 = regular user, 1 = admin
+    is_admin = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relationships
     favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
     predictions = relationship("PredictionHistory", back_populates="user", cascade="all, delete-orphan")
     settings = relationship("UserSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 
 class Favorite(Base):
-    """User's favorite assets (renamed from Watchlist for better semantics)"""
     __tablename__ = "favorites"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -27,30 +25,26 @@ class Favorite(Base):
     asset_symbol = Column(String, nullable=False)
     added_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relationship to user
     user = relationship("User", back_populates="favorites")
 
 
 class PredictionHistory(Base):
-    """Stores user's saved predictions"""
     __tablename__ = "prediction_history"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     asset_symbol = Column(String, nullable=False)
     asset_name = Column(String, nullable=False)
-    custom_name = Column(String, nullable=True)  # Optional custom name from user
+    custom_name = Column(String, nullable=True)
     prediction_period = Column(Integer, nullable=False)
-    prophet_data = Column(Text, nullable=True)  # JSON string of Prophet predictions
-    lstm_data = Column(Text, nullable=True)     # JSON string of LSTM predictions
+    prophet_data = Column(Text, nullable=True)
+    lstm_data = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relationship to user
     user = relationship("User", back_populates="predictions")
 
 
 class UserSettings(Base):
-    """User preferences and settings"""
     __tablename__ = "user_settings"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -58,5 +52,4 @@ class UserSettings(Base):
     default_prediction_period = Column(Integer, default=30)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationship to user
     user = relationship("User", back_populates="settings")

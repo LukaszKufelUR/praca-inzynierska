@@ -12,16 +12,13 @@ export const useTheme = () => {
 
 export const ThemeProvider = ({ children }) => {
     const [theme, setTheme] = useState(() => {
-        // Load theme from localStorage or default to 'dark'
         const savedTheme = localStorage.getItem('theme');
         return savedTheme || 'dark';
     });
 
     useEffect(() => {
-        // Save theme to localStorage whenever it changes
         localStorage.setItem('theme', theme);
 
-        // INVERTED: light theme adds 'dark' class (because Tailwind is backwards)
         if (theme === 'light') {
             document.documentElement.classList.add('dark');
         } else {

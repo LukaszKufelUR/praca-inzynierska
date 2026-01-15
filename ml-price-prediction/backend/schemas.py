@@ -2,7 +2,6 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, Dict, Any
 from datetime import datetime
 
-# User schemas
 class UserBase(BaseModel):
     email: EmailStr
 
@@ -20,7 +19,6 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
-# Token schemas
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -28,12 +26,10 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     email: Optional[str] = None
 
-# Password change schema
 class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str
 
-# Favorite schemas (renamed from Watchlist)
 class FavoriteItem(BaseModel):
     id: int
     asset_symbol: str
@@ -45,7 +41,6 @@ class FavoriteItem(BaseModel):
 class FavoriteCreate(BaseModel):
     asset_symbol: str
 
-# Prediction History schemas
 class PredictionHistoryItem(BaseModel):
     id: int
     asset_symbol: str
@@ -72,7 +67,6 @@ class PredictionVerificationResponse(BaseModel):
     actual_data: list[dict]
     metrics: dict
 
-# User Settings schemas
 class UserSettingsResponse(BaseModel):
     id: int
     default_prediction_period: int
@@ -84,7 +78,6 @@ class UserSettingsResponse(BaseModel):
 class UserSettingsUpdate(BaseModel):
     default_prediction_period: int
 
-# Admin schemas
 class AdminUserListItem(BaseModel):
     id: int
     email: str
@@ -103,5 +96,4 @@ class AdminStatsResponse(BaseModel):
     total_users: int
     total_predictions: int
     total_favorites: int
-    recent_users: int  # Last 7 days
-
+    recent_users: int

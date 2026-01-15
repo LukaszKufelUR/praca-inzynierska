@@ -49,7 +49,6 @@ const MetricsPanel = ({ prophetMetrics, lstmMetrics }) => {
 
     return (
         <div className="space-y-6">
-            {/* Prophet Metrics */}
             <div className="bg-gray-800/50 dark:bg-gray-100 backdrop-blur-sm rounded-xl p-6 border border-gray-700 dark:border-gray-200 shadow-2xl">
                 <h3 className="text-xl font-bold text-white dark:text-gray-900 mb-4 flex items-center gap-2">
                     <span className="text-green-400">🤖</span>
@@ -84,7 +83,6 @@ const MetricsPanel = ({ prophetMetrics, lstmMetrics }) => {
                 </div>
             </div>
 
-            {/* LSTM Metrics */}
             <div className="bg-gray-800/50 dark:bg-gray-100 backdrop-blur-sm rounded-xl p-6 border border-gray-700 dark:border-gray-200 shadow-2xl">
                 <h3 className="text-xl font-bold text-white dark:text-gray-900 mb-4 flex items-center gap-2">
                     <span className="text-yellow-400">🧠</span>
@@ -119,7 +117,6 @@ const MetricsPanel = ({ prophetMetrics, lstmMetrics }) => {
                 </div>
             </div>
 
-            {/* Model Comparison */}
             <div className="bg-gray-800/50 dark:bg-gray-100 backdrop-blur-sm rounded-xl p-6 border border-gray-700 dark:border-gray-200 shadow-2xl">
                 <h3 className="text-xl font-bold text-white dark:text-gray-900 mb-4 flex items-center gap-2">
                     <span className="text-primary-400">⚖️</span>
@@ -149,4 +146,3 @@ const MetricsPanel = ({ prophetMetrics, lstmMetrics }) => {
 };
 
 export default MetricsPanel;
-

@@ -20,7 +20,6 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
         setError('');
         setSuccess(false);
 
-        // Validation
         if (newPassword.length < 6) {
             setError('Nowe hasło musi mieć minimum 6 znaków');
             return;
@@ -40,7 +39,6 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
             setNewPassword('');
             setConfirmPassword('');
 
-            // Close modal after 2 seconds
             setTimeout(() => {
                 onClose();
                 setSuccess(false);
@@ -64,7 +62,6 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-gray-800 dark:bg-white rounded-xl p-6 w-full max-w-md border border-gray-700 dark:border-gray-200 shadow-2xl">
-                {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-white dark:text-gray-900">Zmień hasło</h2>
                     <button
@@ -75,9 +72,7 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
                     </button>
                 </div>
 
-                {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Old Password */}
                     <div>
                         <label className="block text-sm font-medium text-gray-300 dark:text-gray-700 mb-2">
                             Aktualne hasło
@@ -100,7 +95,6 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
                         </div>
                     </div>
 
-                    {/* New Password */}
                     <div>
                         <label className="block text-sm font-medium text-gray-300 dark:text-gray-700 mb-2">
                             Nowe hasło
@@ -124,7 +118,6 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
                         </div>
                     </div>
 
-                    {/* Confirm Password */}
                     <div>
                         <label className="block text-sm font-medium text-gray-300 dark:text-gray-700 mb-2">
                             Potwierdź nowe hasło
@@ -148,21 +141,18 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
                         </div>
                     </div>
 
-                    {/* Error Message */}
                     {error && (
                         <div className="bg-red-500/10 border border-red-500 rounded-lg p-3">
                             <p className="text-red-400 text-sm">{error}</p>
                         </div>
                     )}
 
-                    {/* Success Message */}
                     {success && (
                         <div className="bg-green-500/10 border border-green-500 rounded-lg p-3">
                             <p className="text-green-400 text-sm">Hasło zostało zmienione!</p>
                         </div>
                     )}
 
-                    {/* Submit Button */}
                     <button
                         type="submit"
                         disabled={loading}

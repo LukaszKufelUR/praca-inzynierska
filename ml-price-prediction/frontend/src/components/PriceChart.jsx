@@ -10,25 +10,19 @@ const PriceChart = ({ historicalData, prophetPredictions, lstmPredictions, indic
         lstm: true
     });
 
-    // Combine historical and prediction data
     const combineData = () => {
-        // Filter historical data based on range (calendar days, not records)
         let filteredHistoricalData = historicalData;
         if (historicalDataRange > 0 && historicalData.length > 0) {
-            // Get the last date in historical data
             const lastDate = new Date(historicalData[historicalData.length - 1].Date);
-            // Calculate cutoff date (N days ago)
             const cutoffDate = new Date(lastDate);
             cutoffDate.setDate(cutoffDate.getDate() - historicalDataRange);
 
-            // Filter data to only include dates after cutoff
             filteredHistoricalData = historicalData.filter(item => {
                 const itemDate = new Date(item.Date);
                 return itemDate >= cutoffDate;
             });
         }
 
-        // Create a map of date -> indicator data for O(1) lookup
         const indicatorMap = new Map();
         if (indicators) {
             indicators.forEach(item => {
@@ -58,8 +52,6 @@ const PriceChart = ({ historicalData, prophetPredictions, lstmPredictions, indic
             lstm: null
         }));
 
-        // Merge LSTM data into Prophet data (assuming same dates/indices for now)
-        // If lengths differ, we map over the longer one or handle it safely
         const combinedPredictions = prophetData.map((item, index) => {
             const lstmItem = lstmPredictions && lstmPredictions[index];
             return {
@@ -73,7 +65,6 @@ const PriceChart = ({ historicalData, prophetPredictions, lstmPredictions, indic
 
     const chartData = useMemo(() => combineData(), [historicalData, prophetPredictions, lstmPredictions, indicators, historicalDataRange]);
 
-    // Zoom state - initialized with chartData length
     const [left, setLeft] = useState(0);
     const [right, setRight] = useState(chartData.length - 1);
     const [refAreaLeft, setRefAreaLeft] = useState('');
@@ -86,25 +77,12 @@ const PriceChart = ({ historicalData, prophetPredictions, lstmPredictions, indic
         }));
     };
 
-    // Reset zoom when data range changes
     useEffect(() => {
         setLeft(0);
         setRight(chartData.length - 1);
         setRefAreaLeft('');
         setRefAreaRight('');
     }, [chartData.length]);
-
-    const getAxisYDomain = (from, to, ref, offset) => {
-        const refData = chartData.slice(from - 1, to);
-        let [bottom, top] = [refData[0][ref], refData[0][ref]];
-        refData.forEach((d) => {
-            if (d[ref] > top) top = d[ref];
-            if (d[ref] < bottom) bottom = d[ref];
-        });
-
-        return [(bottom | 0) - offset, (top | 0) + offset];
-    };
-
 
     const zoom = () => {
         if (refAreaLeft === refAreaRight || refAreaRight === '') {
@@ -113,7 +91,6 @@ const PriceChart = ({ historicalData, prophetPredictions, lstmPredictions, indic
             return;
         }
 
-        // Get indices
         const leftIndex = chartData.findIndex(d => d.date === refAreaLeft);
         const rightIndex = chartData.findIndex(d => d.date === refAreaRight);
 
@@ -123,7 +100,6 @@ const PriceChart = ({ historicalData, prophetPredictions, lstmPredictions, indic
             return;
         }
 
-        // Ensure left is smaller than right
         let leftVal = Math.min(leftIndex, rightIndex);
         let rightVal = Math.max(leftIndex, rightIndex);
 

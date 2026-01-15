@@ -3,14 +3,13 @@ import { Search, TrendingUp, Bitcoin, Globe, Loader2 } from 'lucide-react';
 import { api } from '../services/api';
 
 const AssetSelector = ({ selectedAsset, onSelect, assets }) => {
-    const [activeTab, setActiveTab] = useState('stock'); // 'stock' or 'crypto'
+    const [activeTab, setActiveTab] = useState('stock');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const wrapperRef = useRef(null);
 
-    // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -21,7 +20,6 @@ const AssetSelector = ({ selectedAsset, onSelect, assets }) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Debounced search
     useEffect(() => {
         const timer = setTimeout(async () => {
             if (searchQuery.length >= 2) {
@@ -42,7 +40,6 @@ const AssetSelector = ({ selectedAsset, onSelect, assets }) => {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    // Filter default assets based on active tab
     const defaultAssets = assets.filter(a => {
         if (activeTab === 'stock') return a.type === 'index' || a.type === 'stock';
         if (activeTab === 'crypto') return a.type === 'crypto';
@@ -67,7 +64,6 @@ const AssetSelector = ({ selectedAsset, onSelect, assets }) => {
                 Wybierz Aktywo
             </label>
 
-            {/* Trigger Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white text-left flex items-center justify-between hover:bg-gray-600 transition-colors focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
@@ -76,10 +72,8 @@ const AssetSelector = ({ selectedAsset, onSelect, assets }) => {
                 <Search className="w-4 h-4 text-gray-400" />
             </button>
 
-            {/* Dropdown */}
             {isOpen && (
                 <div className="absolute z-[100] w-full mt-2 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in">
-                    {/* Tabs */}
                     <div className="flex border-b border-gray-700">
                         <button
                             onClick={() => setActiveTab('stock')}
@@ -103,7 +97,6 @@ const AssetSelector = ({ selectedAsset, onSelect, assets }) => {
                         </button>
                     </div>
 
-                    {/* Search Input */}
                     <div className="p-3 border-b border-gray-700">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -121,10 +114,8 @@ const AssetSelector = ({ selectedAsset, onSelect, assets }) => {
                         </div>
                     </div>
 
-                    {/* List */}
                     <div className="max-h-60 overflow-y-auto">
                         {searchQuery.length >= 2 ? (
-                            // Search Results
                             <div>
                                 <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
                                     Wyniki wyszukiwania
@@ -154,7 +145,6 @@ const AssetSelector = ({ selectedAsset, onSelect, assets }) => {
                                 )}
                             </div>
                         ) : (
-                            // Default List (Popular)
                             <div>
                                 <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
                                     Popularne

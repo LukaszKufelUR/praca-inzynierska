@@ -4,7 +4,6 @@ import { Loader2, Search } from 'lucide-react';
 import InfoTooltip from './InfoTooltip';
 import { api } from '../services/api';
 
-// Calculate Pearson correlation coefficient
 const calculateCorrelation = (x, y) => {
     const n = x.length;
     const sumX = x.reduce((a, b) => a + b, 0);
@@ -29,7 +28,6 @@ const CorrelationComparison = ({ data }) => {
     const [chartData, setChartData] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    // Search state
     const [searchQuery1, setSearchQuery1] = useState('');
     const [searchQuery2, setSearchQuery2] = useState('');
     const [searchResults1, setSearchResults1] = useState([]);
@@ -41,26 +39,14 @@ const CorrelationComparison = ({ data }) => {
     const [selectedAssetName1, setSelectedAssetName1] = useState('');
     const [selectedAssetName2, setSelectedAssetName2] = useState('');
 
-    // Removed duplicate useEffect
-
     const [showResult, setShowResult] = useState(false);
 
-    // Initial state is empty to prevent auto-calculation
-    // useEffect(() => {
-    //     if (assetsInfo.length >= 2) {
-    //         setAsset1(assetsInfo[0].symbol);
-    //         setAsset2(assetsInfo[1].symbol);
-    //     }
-    // }, [assetsInfo]);
-
-    // Reset result when assets change
     useEffect(() => {
         setShowResult(false);
         setCorrelation(null);
         setChartData([]);
     }, [asset1, asset2]);
 
-    // Debounced search for asset 1
     useEffect(() => {
         const timer = setTimeout(async () => {
             if (searchQuery1.length >= 2) {
@@ -92,7 +78,6 @@ const CorrelationComparison = ({ data }) => {
         return () => clearTimeout(timer);
     }, [searchQuery1, assets]);
 
-    // Debounced search for asset 2
     useEffect(() => {
         const timer = setTimeout(async () => {
             if (searchQuery2.length >= 2) {
@@ -124,7 +109,6 @@ const CorrelationComparison = ({ data }) => {
         return () => clearTimeout(timer);
     }, [searchQuery2, assets]);
 
-    // Close dropdowns when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (!event.target.closest('.relative')) {
@@ -136,7 +120,6 @@ const CorrelationComparison = ({ data }) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Helper functions for asset selection
     const handleSelectAsset1 = (asset) => {
         setAsset1(asset.symbol);
         setSearchQuery1(asset.name);
@@ -151,7 +134,6 @@ const CorrelationComparison = ({ data }) => {
         setShowDropdown2(false);
     };
 
-    // Popular assets for quick selection
     const popularAssets = [
         { symbol: '^GSPC', name: 'S&P 500', type: 'index' },
         { symbol: '^IXIC', name: 'NASDAQ', type: 'index' },
@@ -166,13 +148,11 @@ const CorrelationComparison = ({ data }) => {
         setLoading(true);
         setShowResult(true);
 
-        // Find correlation
         const found = matrixData.find(
             item => (item.x === asset1 && item.y === asset2) || (item.x === asset2 && item.y === asset1)
         );
         setCorrelation(found ? found.value : null);
 
-        // Fetch chart data
         try {
             const [data1Response, data2Response] = await Promise.all([
                 fetch(`http://localhost:8000/api/data/${asset1}`),
@@ -190,44 +170,25 @@ const CorrelationComparison = ({ data }) => {
                 return;
             }
 
-            // Combine data by date (intersection or union?) 
-            // Better to use a Map for O(1) lookup to handle different lengths/dates (e.g. Crypto vs Stock)
             const data2Map = new Map(data2.map(item => [item.Date, item]));
-
-            // We'll use data1's dates as the base or maybe the union of both?
-            // To be safe for correlation, we usually need intersection (dates where BOTH exist)
-            // But for chart display, we might want union.
-            // Let's use intersection for correlation calculation, but maybe union for chart?
-            // For simplicity and correctness of correlation, let's process intersection for calc,
-            // but for simple mapping let's just use data1's timeline and find matching data2. 
-            // *NOTE*: If data1 is Crypto (365 days) and data2 is Stock (250 days), we'll have gaps.
 
             const combined = data1.map((item, index) => {
                 const item2 = data2Map.get(item.Date);
                 const val1 = item.Close;
-                const val2 = item2 ? item2.Close : null; // Use null if no data for that date
+                const val2 = item2 ? item2.Close : null;
 
                 let rollingCorr = null;
-                // Rolling correlation requires contiguous matching data. 
-                // Doing it simply on the arrays might be inaccurate if dates don't align.
-                // For a robust implementation, we should align arrays by Date first.
-
-                // Quick fix: Just show values aligned by Date. 
-                // Correlation calculation here is tricky if rows don't align.
-                // Let's re-calculate correlation based on aligned arrays.
 
                 return {
                     date: item.Date,
                     [asset1]: val1,
                     [asset2]: val2,
-                    correlation: null // We'll calculate below if possible or skip for now to fix display
+                    correlation: null
                 };
             });
 
-            // Re-calculate rolling correlation properly on aligned data
             const alignedData = [];
 
-            // Create a union of all dates to show full chart
             const allDates = new Set([...data1.map(d => d.Date), ...data2.map(d => d.Date)]);
             const sortedDates = Array.from(allDates).sort();
 
@@ -240,14 +201,8 @@ const CorrelationComparison = ({ data }) => {
                 const val1 = item1 ? item1.Close : null;
                 const val2 = item2 ? item2.Close : null;
 
-                // Rolling correlation
                 let rollingCorr = null;
                 if (index >= 29) {
-                    // Extract windows of 30 items
-                    // We need 30 PAIRS of non-null values for mathematical correctness? 
-                    // Or just 30 previous rows? 
-                    // Let's stick to 30 previous rows, but filter out nulls.
-
                     const windowDates = sortedDates.slice(index - 29, index + 1);
                     const window1 = [];
                     const window2 = [];
@@ -261,7 +216,7 @@ const CorrelationComparison = ({ data }) => {
                         }
                     });
 
-                    if (window1.length >= 10) { // Require at least 10 matching data points
+                    if (window1.length >= 10) {
                         rollingCorr = calculateCorrelation(window1, window2);
                     }
                 }
@@ -284,7 +239,6 @@ const CorrelationComparison = ({ data }) => {
 
     if (assets.length === 0) return null;
 
-    // Custom tooltip
     const CustomTooltip = ({ active, payload }) => {
         if (!active || !payload || !payload.length) return null;
 
@@ -321,13 +275,6 @@ const CorrelationComparison = ({ data }) => {
 
     const label = getCorrelationLabel(correlation);
 
-    // Auto-calculate removed in favor of manual button
-    // useEffect(() => {
-    //     if (asset1 && asset2) {
-    //         handleCalculate();
-    //     }
-    // }, [asset1, asset2]);
-
     return (
         <div className="bg-gray-800/50 dark:bg-gray-100 backdrop-blur-sm rounded-xl p-6 border border-gray-700 dark:border-gray-200 shadow-xl">
             <h3 className="text-xl font-bold text-white dark:text-gray-900 mb-4 flex items-center gap-2">
@@ -336,7 +283,6 @@ const CorrelationComparison = ({ data }) => {
                 <InfoTooltip text="Wybierz dwa aktywa, aby zobaczyć, jak silnie są ze sobą skorelowane. Korelacja 1.00 oznacza, że poruszają się identycznie, -1.00 to ruch w przeciwnych kierunkach." />
             </h3>
 
-            {/* Popular Assets */}
             <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-300 dark:text-gray-700 mb-2">
                     Popularne Aktywa
@@ -363,7 +309,6 @@ const CorrelationComparison = ({ data }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                {/* Asset 1 Search */}
                 <div className="relative">
                     <label className="block text-sm font-medium text-gray-300 dark:text-gray-700 mb-2">
                         Pierwsze Aktywo
@@ -386,9 +331,8 @@ const CorrelationComparison = ({ data }) => {
                         )}
                     </div>
 
-                    {/* Search Results Dropdown */}
                     {showDropdown1 && searchResults1.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-gray-700 dark:bg-white border border-gray-600 dark:border-gray-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                        <div className="absolute z-10 w-full mt-1 bg-gray-700 dark:bg-white border border-gray-600 dark:border-gray-300 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                             {searchResults1.map((asset) => (
                                 <button
                                     key={asset.symbol}
@@ -403,7 +347,6 @@ const CorrelationComparison = ({ data }) => {
                     )}
                 </div>
 
-                {/* Asset 2 Search */}
                 <div className="relative">
                     <label className="block text-sm font-medium text-gray-300 dark:text-gray-700 mb-2">
                         Drugie Aktywo
@@ -426,9 +369,8 @@ const CorrelationComparison = ({ data }) => {
                         )}
                     </div>
 
-                    {/* Search Results Dropdown */}
                     {showDropdown2 && searchResults2.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-gray-700 dark:bg-white border border-gray-600 dark:border-gray-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                        <div className="absolute z-10 w-full mt-1 bg-gray-700 dark:bg-white border border-gray-600 dark:border-gray-300 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                             {searchResults2.map((asset) => (
                                 <button
                                     key={asset.symbol}
@@ -463,9 +405,6 @@ const CorrelationComparison = ({ data }) => {
                 </button>
             </div>
 
-
-
-            {/* Result */}
             {
                 showResult && correlation !== null && (
                     <div className="bg-gray-900/50 dark:bg-gray-100 rounded-lg p-4 border border-gray-700 dark:border-gray-300 mb-6">
@@ -486,7 +425,6 @@ const CorrelationComparison = ({ data }) => {
                 )
             }
 
-            {/* Loading State */}
             {
                 loading && (
                     <div className="bg-gray-900/50 dark:bg-gray-100 rounded-lg p-8 border border-gray-700 dark:border-gray-300 flex items-center justify-center">
@@ -496,7 +434,6 @@ const CorrelationComparison = ({ data }) => {
                 )
             }
 
-            {/* Comparison Chart */}
             {
                 showResult && !loading && chartData.length > 0 && (
                     <div className="bg-gray-900/50 dark:bg-gray-100 rounded-lg p-4 border border-gray-700 dark:border-gray-300">

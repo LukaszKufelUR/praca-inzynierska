@@ -5,12 +5,10 @@ import InfoTooltip from './InfoTooltip';
 const TechnicalAnalysis = ({ data }) => {
     if (!data || data.length === 0) return null;
 
-    // Filter data to remove nulls at the beginning (due to rolling windows)
     const chartData = data.filter(item => item.RSI !== null && item.MACD !== null);
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            {/* RSI Chart */}
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 shadow-xl">
                 <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                     <span className="text-purple-400">📊</span>
@@ -41,7 +39,6 @@ const TechnicalAnalysis = ({ data }) => {
                 </ResponsiveContainer>
             </div>
 
-            {/* MACD Chart */}
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 shadow-xl">
                 <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                     <span className="text-blue-400">📉</span>

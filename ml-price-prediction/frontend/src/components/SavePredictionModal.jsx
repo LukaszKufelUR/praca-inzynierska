@@ -5,12 +5,12 @@ const SavePredictionModal = ({ isOpen, onClose, onSave, defaultName, isSaving })
     const [customName, setCustomName] = useState('');
 
     const handleSave = () => {
-        onSave(customName.trim() || null); // Pass null if empty (will use default)
-        setCustomName(''); // Reset for next time
+        onSave(customName.trim() || null);
+        setCustomName('');
     };
 
     const handleClose = () => {
-        setCustomName(''); // Reset on close
+        setCustomName('');
         onClose();
     };
 
@@ -19,7 +19,6 @@ const SavePredictionModal = ({ isOpen, onClose, onSave, defaultName, isSaving })
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-gray-800 rounded-xl w-full max-w-md border border-gray-700 shadow-2xl">
-                {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-700">
                     <h2 className="text-xl font-bold text-white">Zapisz Prognozę</h2>
                     <button
@@ -30,7 +29,6 @@ const SavePredictionModal = ({ isOpen, onClose, onSave, defaultName, isSaving })
                     </button>
                 </div>
 
-                {/* Content */}
                 <div className="p-6 space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -50,7 +48,6 @@ const SavePredictionModal = ({ isOpen, onClose, onSave, defaultName, isSaving })
                         </p>
                     </div>
 
-                    {/* Buttons */}
                     <div className="flex gap-3 pt-2">
                         <button
                             onClick={handleClose}

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { TrendingUp, Loader2, AlertCircle, BarChart3, User, Save, Wallet, Activity, FileText } from 'lucide-react';
 import { api } from './services/api';
 import PriceChart from './components/PriceChart';
@@ -29,16 +31,15 @@ function AppContent() {
     const [correlationData, setCorrelationData] = useState(null);
     const [indicators, setIndicators] = useState(null);
     const [showAuthModal, setShowAuthModal] = useState(false);
-    const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
+    const [authMode, setAuthMode] = useState('login');
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [showAdminPanel, setShowAdminPanel] = useState(false);
     const [favorites, setFavorites] = useState([]);
     const [savingPrediction, setSavingPrediction] = useState(false);
-    const [historicalDataRange, setHistoricalDataRange] = useState(90); // days to show
+    const [historicalDataRange, setHistoricalDataRange] = useState(90);
 
-    // Load assets, correlation, and user data on mount
     useEffect(() => {
         loadAssets();
         loadCorrelation();
@@ -57,7 +58,6 @@ function AppContent() {
             }
         } catch (err) {
             setError('Nie udało się pobrać listy aktywów');
-            console.error(err);
         }
     };
 
@@ -146,10 +146,9 @@ function AppContent() {
                 name: historyItem.asset_name,
                 prophet: prophetData,
                 lstm: lstmData,
-                historical_data: [] // Note: We might want to fetch historical data here if needed, or store it
+                historical_data: []
             });
 
-            // Fetch fresh historical data and indicators to complete the view
             api.getHistoricalData(historyItem.asset_symbol).then(response => {
                 setPredictionData(prev => ({
                     ...prev,
@@ -169,16 +168,24 @@ function AppContent() {
     };
 
     const generatePredictionReport = () => {
-        if (!predictionData) return; // selectedAsset might be different from predictionData symbol
+        if (!predictionData) return;
 
         const reportDate = new Date().toLocaleString('pl-PL');
         const prophetMetrics = predictionData.prophet?.metrics || {};
         const lstmMetrics = predictionData.lstm?.metrics || {};
 
-        // Debug logging
-        console.log("Generating report for:", predictionData.name);
-        if (predictionData.historical_data && predictionData.historical_data.length > 0) {
-            console.log("Sample Price:", predictionData.historical_data[predictionData.historical_data.length - 1].Close);
+        const historicalData = predictionData.historical_data || [];
+        let filteredHistoricalData = historicalData;
+
+        if (historicalDataRange > 0 && historicalData.length > 0) {
+            const lastDate = new Date(historicalData[historicalData.length - 1].Date);
+            const cutoffDate = new Date(lastDate);
+            cutoffDate.setDate(cutoffDate.getDate() - historicalDataRange);
+
+            filteredHistoricalData = historicalData.filter(d => {
+                const itemDate = new Date(d.Date);
+                return itemDate >= cutoffDate;
+            });
         }
 
         const htmlContent = `
@@ -368,33 +375,12 @@ function AppContent() {
     </div>
 
     <script>
-        // Prepare data for chart
-        const historicalData = ${JSON.stringify(predictionData.historical_data || [])};
+        const historicalData = ${JSON.stringify(filteredHistoricalData)};
         const prophetPredictions = ${JSON.stringify(predictionData.prophet?.predictions || [])};
         const lstmPredictions = ${JSON.stringify(predictionData.lstm?.predictions || [])};
-        const historicalDataRange = ${historicalDataRange}; // Inject historicalDataRange value
 
-
-        // Extract dates and prices - using correct field names
-        let filteredHistoricalData = historicalData;
-        
-        // Filter historical data based on range (calendar days, not records)
-        if (historicalDataRange > 0 && historicalData.length > 0) {
-            // Get the last date in historical data
-            const lastDate = new Date(historicalData[historicalData.length - 1].Date);
-            // Calculate cutoff date (N days ago)
-            const cutoffDate = new Date(lastDate);
-            cutoffDate.setDate(cutoffDate.getDate() - historicalDataRange);
-            
-            // Filter data to only include dates after cutoff
-            filteredHistoricalData = historicalData.filter(d => {
-                const itemDate = new Date(d.Date);
-                return itemDate >= cutoffDate;
-            });
-        }
-        
-        const historicalDates = filteredHistoricalData.map(d => d.Date);
-        const historicalPrices = filteredHistoricalData.map(d => d.Close);
+        const historicalDates = historicalData.map(d => d.Date);
+        const historicalPrices = historicalData.map(d => d.Close);
         
         const prophetDates = prophetPredictions.map(d => d.ds);
         const prophetPrices = prophetPredictions.map(d => d.yhat);
@@ -402,15 +388,12 @@ function AppContent() {
         const lstmDates = lstmPredictions.map(d => d.ds || d.date);
         const lstmPrices = lstmPredictions.map(d => d.yhat || d.price);
 
-        // Combine all dates for x-axis
         const allDates = [...historicalDates, ...prophetDates];
 
-        // Create arrays with null values for proper alignment
         const historicalDataset = [...historicalPrices, ...Array(prophetDates.length).fill(null)];
         const prophetDataset = [...Array(historicalDates.length).fill(null), ...prophetPrices];
         const lstmDataset = [...Array(historicalDates.length).fill(null), ...lstmPrices];
 
-        // Create chart
         const ctx = document.getElementById('predictionChart').getContext('2d');
         new Chart(ctx, {
             type: 'line',
@@ -513,7 +496,6 @@ function AppContent() {
         URL.revokeObjectURL(url);
     };
 
-    // Save settings when prediction period changes
     useEffect(() => {
         if (isAuthenticated && predictionPeriod) {
             const saveSettings = async () => {
@@ -532,8 +514,6 @@ function AppContent() {
 
         setLoading(true);
         setError(null);
-        // setPredictionData(null); // Keep previous data visible
-        // setIndicators(null);
 
         try {
             const [predData, indData] = await Promise.all([
@@ -559,7 +539,6 @@ function AppContent() {
                 selectedAsset={selectedAsset}
                 onSelect={(asset) => {
                     setSelectedAsset(asset.symbol);
-                    // Add to assets list if not present so we can show info
                     if (!assets.find(a => a.symbol === asset.symbol)) {
                         setAssets(prev => [...prev, asset]);
                     }
@@ -579,11 +558,7 @@ function AppContent() {
             <div className="flex-1 ml-80 p-8 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-50 dark:via-white dark:to-gray-50 min-h-screen">
                 <div className="max-w-7xl mx-auto space-y-6">
 
-                    {/* Top Bar: User Profile & Auth */}
-                    {/* Top Bar: User Profile & Auth - MOVED TO SIDEBAR */}
-                    {/* <div className="flex justify-end mb-4"> ... </div> */}
-
-                    {/* Asset Info Card (Full Width) */}
+                    {/* Karta Informacji o Aktywie (Pełna Szerokość) */}
                     {selectedAssetInfo ? (
                         <div className="bg-gray-800/50 dark:bg-white/80 backdrop-blur-sm border border-gray-700 dark:border-gray-200 rounded-2xl p-6 shadow-xl animate-fade-in">
                             <div className="flex items-center gap-3 mb-4">
@@ -625,10 +600,10 @@ function AppContent() {
                         </div>
                     )}
 
-                    {/* Chart & Controls Section */}
+                    {/* Sekcja Wykresu i Kontroli */}
                     <div className="space-y-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
                         <div className="bg-gray-800/50 dark:bg-white/80 backdrop-blur-sm border border-gray-700 dark:border-gray-200 rounded-2xl p-6 shadow-xl min-h-[500px]">
-                            {/* Chart Header with Integrated Controls */}
+                            {/* Nagłówek Wykresu ze Zintegrowanymi Kontrolkami */}
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                                 <div className="flex items-center gap-3">
                                     <div className="bg-purple-500/10 p-2 rounded-lg">
@@ -636,7 +611,7 @@ function AppContent() {
                                     </div>
                                     <h2 className="text-lg font-semibold text-white dark:text-gray-900">Wykres Cen i Prognoza</h2>
                                 </div>
-                                {/* Integrated Controls */}
+                                {/* Zintegrowane Kontrolki */}
                                 <div className="flex items-center gap-3">
                                     <div className="relative">
                                         <select
@@ -712,7 +687,7 @@ function AppContent() {
                             )}
                         </div>
 
-                        {/* Metrics & Analysis */}
+                        {/* Metryki i Analiza */}
                         {predictionData && (
                             <>
                                 <MetricsPanel
@@ -744,7 +719,7 @@ function AppContent() {
                         )}
                     </div>
 
-                    {/* Correlation Section */}
+                    {/* Sekcja Korelacji */}
                     <div className="mt-12 animate-slide-up" style={{ animationDelay: '0.2s' }}>
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-bold text-white dark:text-gray-900 flex items-center gap-2">
@@ -760,7 +735,7 @@ function AppContent() {
                 </div>
             </div>
 
-            {/* Modals */}
+            {/* Modale */}
             <AuthModal
                 isOpen={showAuthModal}
                 onClose={() => setShowAuthModal(false)}
@@ -787,7 +762,6 @@ function AppContent() {
     );
 }
 
-// Wrap with AuthProvider and ThemeProvider
 function App() {
     return (
         <ThemeProvider>

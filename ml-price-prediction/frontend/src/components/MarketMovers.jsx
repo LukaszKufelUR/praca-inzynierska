@@ -5,11 +5,9 @@ const MarketMovers = ({ activeTab, onSelect, isFullView = false }) => {
     const [movers, setMovers] = useState({ gainers: [], losers: [] });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [activeSection, setActiveSection] = useState('gainers'); // 'gainers' or 'losers'
+    const [activeSection, setActiveSection] = useState('gainers');
     const [isExpanded, setIsExpanded] = useState(true);
-
-    // Internal filter for the 'Trendy' tab view
-    const [assetFilter, setAssetFilter] = useState('all'); // 'all', 'stock', 'crypto'
+    const [assetFilter, setAssetFilter] = useState('all');
 
     useEffect(() => {
         const fetchMovers = async () => {
@@ -31,16 +29,13 @@ const MarketMovers = ({ activeTab, onSelect, isFullView = false }) => {
         return () => clearInterval(interval);
     }, []);
 
-    // Determined effective filter based on context
     const getEffectiveFilter = (item) => {
-        // If we are in specific sidebar tabs, force that type
         if (activeTab === 'crypto') return item.type === 'crypto';
         if (activeTab === 'stock') return item.type !== 'crypto';
 
-        // If we are in 'trending' (full view), use internal filter
         if (assetFilter === 'crypto') return item.type === 'crypto';
         if (assetFilter === 'stock') return item.type !== 'crypto';
-        return true; // 'all'
+        return true;
     };
 
     const displayedGainers = movers.gainers ? movers.gainers.filter(getEffectiveFilter) : [];
@@ -48,10 +43,6 @@ const MarketMovers = ({ activeTab, onSelect, isFullView = false }) => {
 
     const displayedMovers = activeSection === 'gainers' ? displayedGainers : displayedLosers;
 
-    // Limit logic:
-    // - Not Full View: Top 3
-    // - Full View & 'All': Top 20
-    // - Full View & Specific Category: Top 10
     let limit = 3;
     if (isFullView) {
         limit = 10;
@@ -66,7 +57,6 @@ const MarketMovers = ({ activeTab, onSelect, isFullView = false }) => {
     );
     if (error) return null;
 
-    // In full view, we skip the outer container styles that forced padding/borders from footer usage
     const Container = isFullView ? 'div' : 'div';
     const containerClasses = isFullView
         ? "space-y-4"
@@ -74,7 +64,6 @@ const MarketMovers = ({ activeTab, onSelect, isFullView = false }) => {
 
     return (
         <Container className={containerClasses}>
-            {/* Header / Toggle - Only show if NOT in full view (Tab replaces header) */}
             {!isFullView && (
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
@@ -97,7 +86,6 @@ const MarketMovers = ({ activeTab, onSelect, isFullView = false }) => {
             {(isExpanded || isFullView) && (
                 <div className={!isFullView ? "animate-in slide-in-from-top-2 duration-200" : ""}>
 
-                    {/* Internal Asset Filter - Only visible in Full View */}
                     {isFullView && (
                         <div className="flex gap-2 mb-4 overflow-x-auto pb-1 no-scrollbar">
                             <button
@@ -133,7 +121,6 @@ const MarketMovers = ({ activeTab, onSelect, isFullView = false }) => {
                         </div>
                     )}
 
-                    {/* Gainers/Losers Toggle */}
                     <div className="flex bg-gray-900/50 dark:bg-gray-100 rounded-lg p-1 mb-2">
                         <button
                             onClick={() => setActiveSection('gainers')}
@@ -157,7 +144,6 @@ const MarketMovers = ({ activeTab, onSelect, isFullView = false }) => {
                         </button>
                     </div>
 
-                    {/* List */}
                     <div className="space-y-2">
                         {visibleMovers.length > 0 ? (
                             visibleMovers.map((mover) => (
@@ -171,7 +157,6 @@ const MarketMovers = ({ activeTab, onSelect, isFullView = false }) => {
                                             <span className="font-semibold text-sm text-white dark:text-gray-900 group-hover:text-primary-400 transition-colors">
                                                 {mover.symbol}
                                             </span>
-                                            {/* Show Type Badge in Full View to be informative */}
                                             {isFullView && (
                                                 <span className="text-[10px] uppercase text-gray-500 bg-gray-800 dark:bg-gray-200 px-1 rounded">
                                                     {mover.type}

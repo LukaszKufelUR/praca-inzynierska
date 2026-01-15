@@ -12,7 +12,6 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
 
     const { login, register } = useAuth();
 
-    // Reset mode when modal opens
     React.useEffect(() => {
         if (isOpen) {
             setIsLogin(initialMode === 'login');
@@ -53,7 +52,6 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-gray-800 dark:bg-white rounded-xl p-6 w-full max-w-md border border-gray-700 dark:border-gray-200 shadow-2xl">
-                {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-white dark:text-gray-900">
                         {isLogin ? 'Zaloguj się' : 'Zarejestruj się'}
@@ -66,7 +64,6 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
                     </button>
                 </div>
 
-                {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-300 dark:text-gray-700 mb-2">
@@ -129,7 +126,6 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
                     </button>
                 </form>
 
-                {/* Toggle */}
                 <div className="mt-6 text-center">
                     <button
                         onClick={() => {

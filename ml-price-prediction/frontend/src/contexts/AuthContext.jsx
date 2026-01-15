@@ -7,7 +7,6 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(localStorage.getItem('token'));
     const [loading, setLoading] = useState(true);
 
-    // Check if user is logged in on mount
     useEffect(() => {
         const checkAuth = async () => {
             const storedToken = localStorage.getItem('token');
@@ -24,7 +23,6 @@ export const AuthProvider = ({ children }) => {
                         setUser(userData);
                         setToken(storedToken);
                     } else {
-                        // Token invalid, clear it
                         localStorage.removeItem('token');
                         setToken(null);
                     }
@@ -59,7 +57,6 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('token', data.access_token);
         setToken(data.access_token);
 
-        // Fetch user data
         const userResponse = await fetch('http://localhost:8000/api/auth/me', {
             headers: {
                 'Authorization': `Bearer ${data.access_token}`
@@ -88,7 +85,6 @@ export const AuthProvider = ({ children }) => {
 
         const userData = await response.json();
 
-        // Auto-login after registration
         await login(email, password);
 
         return userData;

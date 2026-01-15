@@ -1,7 +1,3 @@
-"""
-LSTM model implementation for time series forecasting using PyTorch
-"""
-
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
@@ -19,7 +15,6 @@ from ..config import (
 
 
 class LSTMModel(nn.Module):
-    """PyTorch LSTM model"""
     
     def __init__(self, input_size=1, hidden_size=50, num_layers=2, dropout=0.2):
         super(LSTMModel, self).__init__()
@@ -34,26 +29,21 @@ class LSTMModel(nn.Module):
             batch_first=True
         )
         
-        self.fc1 = nn.Linear(hidden_size, 25)
-        self.fc2 = nn.Linear(25, 1)
-        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(dropout)
+        self.fc = nn.Linear(hidden_size, 1)
         
     def forward(self, x):
-        # LSTM layer
         lstm_out, _ = self.lstm(x)
         
-        # Take the last output
         last_output = lstm_out[:, -1, :]
         
-        # Fully connected layers
-        out = self.relu(self.fc1(last_output))
-        out = self.fc2(out)
+        out = self.dropout(last_output)
+        out = self.fc(out)
         
         return out
 
 
 class LSTMPredictor:
-    """LSTM-based price prediction model using PyTorch"""
     
     def __init__(self, lookback_days: int = LSTM_LOOKBACK_DAYS):
         self.model = None
@@ -64,15 +54,6 @@ class LSTMPredictor:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     def prepare_sequences(self, data: np.ndarray) -> tuple:
-        """
-        Prepare sequences for LSTM training
-        
-        Args:
-            data: 1D array of prices
-        
-        Returns:
-            Tuple of (X, y) for training
-        """
         X, y = [], []
         
         for i in range(self.lookback_days, len(data)):
@@ -82,176 +63,122 @@ class LSTMPredictor:
         X = np.array(X)
         y = np.array(y)
         
-        # Reshape X to 3D: (samples, lookback_days, features)
         X = X.reshape((X.shape[0], X.shape[1], 1))
         
         return X, y
 
     
     def train(self, df: pd.DataFrame, symbol: str) -> dict:
-        """
-        Train LSTM model on price differences
+        print(f"Trenowanie modelu LSTM dla {symbol} (różnice cen, 150 units)...")
         
-        Args:
-            df: DataFrame with historical data
-            symbol: Asset symbol for model saving
-        
-        Returns:
-            Dictionary with training metrics
-        """
-        print(f"Training LSTM model for {symbol} (using differencing)...")
-        
-        if len(df) <= self.lookback_days + 10: # +10 buffer
-            raise ValueError(f"Insufficient data for LSTM training. Need at least {self.lookback_days + 10} days, got {len(df)}")
+        if len(df) <= self.lookback_days + 10:
+            raise ValueError(f"Niewystarczająca ilość danych do treningu LSTM. Wymagane co najmniej {self.lookback_days + 10} dni, otrzymano {len(df)}")
 
-        
-        # Calculate differences (stationarity)
-        # We use simple difference: Price_t - Price_{t-1}
         diff_values = df['Close'].diff().dropna().values.reshape(-1, 1)
         
-        # Scale data (-1 to 1 is often better for tanh in LSTM, but 0-1 is fine too)
-        # We stick to 0-1 as per previous scaler config, but fit on diffs
         scaled_data = self.scaler.fit_transform(diff_values)
         
-        # Prepare sequences
         X, y = self.prepare_sequences(scaled_data)
         
-        # Convert to PyTorch tensors (X is already 3D: samples, lookback, features)
         X_tensor = torch.FloatTensor(X).to(self.device)
         y_tensor = torch.FloatTensor(y).to(self.device)
         
-        # Split into train and validation
-        split_idx = int(len(X_tensor) * (1 - LSTM_VALIDATION_SPLIT))
-        X_train, X_val = X_tensor[:split_idx], X_tensor[split_idx:]
-        y_train, y_val = y_tensor[:split_idx], y_tensor[split_idx:]
+        split_idx = int(len(X_tensor) * 0.8)
+        X_train, X_test = X_tensor[:split_idx], X_tensor[split_idx:]
+        y_train, y_test = y_tensor[:split_idx], y_tensor[split_idx:]
         
-        # Initialize model
-        self.model = LSTMModel().to(self.device)
+        self.model = LSTMModel(input_size=1, hidden_size=50, num_layers=2, dropout=0.2).to(self.device)
         
-        # Loss and optimizer
         criterion = nn.MSELoss()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
         
-        # Training loop
+        batch_size = 16
+        epochs = 30
+        validation_split = 0.1
+        
+        val_size = int(len(X_train) * validation_split)
+        X_train_final, X_val = X_train[:-val_size], X_train[-val_size:]
+        y_train_final, y_val = y_train[:-val_size], y_train[-val_size:]
+        
         best_val_loss = float('inf')
-        patience = 5
+        patience = 10
         patience_counter = 0
         
-        for epoch in range(LSTM_EPOCHS):
+        for epoch in range(epochs):
             self.model.train()
             
-            # Mini-batch training
-            for i in range(0, len(X_train), LSTM_BATCH_SIZE):
-                batch_X = X_train[i:i+LSTM_BATCH_SIZE]
-                batch_y = y_train[i:i+LSTM_BATCH_SIZE]
+            for i in range(0, len(X_train_final), batch_size):
+                batch_X = X_train_final[i:i+batch_size]
+                batch_y = y_train_final[i:i+batch_size]
                 
-                # Forward pass
                 outputs = self.model(batch_X).squeeze()
-                loss = criterion(outputs, batch_y)
+                loss = criterion(outputs, batch_y.squeeze())
                 
-                # Backward pass
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
             
-            # Validation
             self.model.eval()
             with torch.no_grad():
                 val_outputs = self.model(X_val).squeeze()
-                val_loss = criterion(val_outputs, y_val)
+                val_loss = criterion(val_outputs, y_val.squeeze())
             
-            # Early stopping
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 patience_counter = 0
             else:
                 patience_counter += 1
                 if patience_counter >= patience:
-                    print(f"Early stopping at epoch {epoch+1}")
+                    print(f"Wczesne zatrzymanie w epoce {epoch+1}")
                     break
         
-        # Calculate metrics on training data (reconstructed prices)
         self.model.eval()
         with torch.no_grad():
-            predictions_diff_scaled = self.model(X_tensor).squeeze().cpu().numpy()
+            test_predictions = self.model(X_test).squeeze().cpu().numpy()
         
-        # Reconstruct prices for metrics calculation
-        # We need the base prices corresponding to the start of each prediction
-        # y contains diffs starting from lookback_days index of the diff array
-        # The diff array starts at index 1 of original df
-        # So diff[i] corresponds to Close[i+1] - Close[i]
+        y_test_np = y_test.squeeze().cpu().numpy()
         
-        # Inverse transform predicted differences
-        predictions_diff = self.scaler.inverse_transform(predictions_diff_scaled.reshape(-1, 1)).flatten()
-        actual_diff = self.scaler.inverse_transform(y.reshape(-1, 1)).flatten()
+        test_predictions_unscaled = self.scaler.inverse_transform(test_predictions.reshape(-1, 1)).flatten()
+        y_test_unscaled = self.scaler.inverse_transform(y_test_np.reshape(-1, 1)).flatten()
         
-        # To calculate RMSE on prices, we need to reconstruct.
-        # However, for training metrics, it's often enough to report error on diffs or just save the model.
-        # But to be consistent with the UI, let's try to reconstruct a segment.
-        # For simplicity in this method, we'll report metrics on the DIFFERENCES, 
-        # as reconstructing the whole series for training metrics is complex due to windowing.
-        # Or we can just return the loss.
+        mae = mean_absolute_error(y_test_unscaled, test_predictions_unscaled)
+        rmse = np.sqrt(mean_squared_error(y_test_unscaled, test_predictions_unscaled))
         
-        # Let's calculate MAE/RMSE on the differences themselves for the log
-        mae_diff = mean_absolute_error(actual_diff, predictions_diff)
-        rmse_diff = np.sqrt(mean_squared_error(actual_diff, predictions_diff))
-        
-        # Save model
         self._save_model(symbol)
         
-        print(f"LSTM model trained on differences. Diff RMSE: {rmse_diff:.4f}, Diff MAE: {mae_diff:.4f}")
+        print(f"Model LSTM wytrenowany. Test RMSE: {rmse:.4f}, Test MAE: {mae:.4f}")
         
-        # Return metrics (note: these are on differences, not absolute prices)
         return {
-            'mae': float(mae_diff),
-            'rmse': float(rmse_diff),
-            'mape': 0.0 # MAPE on differences is not very meaningful (div by zero issues)
+            'mae': float(mae),
+            'rmse': float(rmse),
+            'mape': 0.0
         }
     
     def predict(self, df: pd.DataFrame, periods: int) -> pd.DataFrame:
-        """
-        Generate future predictions using differencing
-        
-        Args:
-            df: Historical data
-            periods: Number of days to predict
-        
-        Returns:
-            DataFrame with predictions
-        """
         if self.model is None:
-            raise ValueError("Model not trained. Call train() first.")
+            raise ValueError("Model nie wytrenowany. Najpierw wywołaj train().")
         
         self.model.eval()
         
-        # Prepare data for prediction
-        # Calculate differences
         diff_values = df['Close'].diff().dropna().values.reshape(-1, 1)
         
-        # Scale differences
         scaled_diffs = self.scaler.transform(diff_values)
         
-        # Get last sequence of differences
         last_sequence = scaled_diffs[-self.lookback_days:]
         
-        # Generate predictions (of differences)
         predicted_diffs_scaled = []
         current_sequence = torch.FloatTensor(last_sequence).unsqueeze(0).to(self.device)
         
         with torch.no_grad():
             for _ in range(periods):
-                # Predict next difference
                 next_pred = self.model(current_sequence).cpu().numpy()[0, 0]
                 predicted_diffs_scaled.append(next_pred)
                 
-                # Update sequence
                 next_pred_tensor = torch.FloatTensor([[next_pred]]).to(self.device)
                 current_sequence = torch.cat([current_sequence[:, 1:, :], next_pred_tensor.unsqueeze(1)], dim=1)
         
-        # Inverse transform predicted differences
         predicted_diffs = self.scaler.inverse_transform(np.array(predicted_diffs_scaled).reshape(-1, 1)).flatten()
         
-        # Reconstruct absolute prices
         last_close_price = df['Close'].iloc[-1]
         predicted_prices = []
         current_price = last_close_price
@@ -260,7 +187,6 @@ class LSTMPredictor:
             current_price = current_price + diff
             predicted_prices.append(current_price)
             
-        # Create future dates
         last_date = df['Date'].iloc[-1]
         future_dates = pd.date_range(
             start=last_date + pd.Timedelta(days=1),
@@ -268,51 +194,33 @@ class LSTMPredictor:
             freq='D'
         )
         
-        # Create DataFrame
         forecast_df = pd.DataFrame({
             'ds': future_dates,
-            'yhat': [max(0, p) for p in predicted_prices]  # Clamp to 0
+            'yhat': [max(0, p) for p in predicted_prices]
         })
         
         return forecast_df
     
     def _calculate_metrics(self, actual: np.ndarray, predicted: np.ndarray) -> dict:
-        """Calculate evaluation metrics"""
-        # Inverse transform for actual values
-        actual_prices = self.scaler.inverse_transform(actual.reshape(-1, 1))
-        predicted_prices = self.scaler.inverse_transform(predicted.reshape(-1, 1))
-        
-        mae = mean_absolute_error(actual_prices, predicted_prices)
-        rmse = np.sqrt(mean_squared_error(actual_prices, predicted_prices))
-        mape = np.mean(np.abs((actual_prices - predicted_prices) / actual_prices)) * 100
-        
-        return {
-            'mae': float(mae),
-            'rmse': float(rmse),
-            'mape': float(mape)
-        }
+        pass
     
     def _save_model(self, symbol: str):
-        """Save trained model to disk"""
         safe_symbol = symbol.replace('^', '').replace('-', '_')
         model_path = self.model_dir / f"{safe_symbol}_lstm.pth"
         scaler_path = self.model_dir / f"{safe_symbol}_scaler.pkl"
         
         try:
-            # Save PyTorch model
             torch.save(self.model.state_dict(), model_path)
             
-            # Save scaler
             import pickle
             with open(scaler_path, 'wb') as f:
                 pickle.dump(self.scaler, f)
             
-            print(f"Model saved to {model_path}")
+            print(f"Model zapisany w {model_path}")
         except Exception as e:
-            print(f"Error saving model: {e}")
+            print(f"Błąd zapisu modelu: {e}")
     
     def load_model(self, symbol: str) -> bool:
-        """Load trained model from disk"""
         safe_symbol = symbol.replace('^', '').replace('-', '_')
         model_path = self.model_dir / f"{safe_symbol}_lstm.pth"
         scaler_path = self.model_dir / f"{safe_symbol}_scaler.pkl"
@@ -321,19 +229,16 @@ class LSTMPredictor:
             return False
         
         try:
-            # Load PyTorch model
             self.model = LSTMModel().to(self.device)
             self.model.load_state_dict(torch.load(model_path, map_location=self.device))
             self.model.eval()
             
-            # Load scaler
             import pickle
             with open(scaler_path, 'rb') as f:
                 self.scaler = pickle.load(f)
             
-            print(f"Model loaded from {model_path}")
+            print(f"Model wczytany z {model_path}")
             return True
         except Exception as e:
-            print(f"Error loading model: {e}")
+            print(f"Błąd wczytywania modelu: {e}")
             return False
-
