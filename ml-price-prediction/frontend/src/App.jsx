@@ -534,7 +534,7 @@ function AppContent() {
 
     return (
         <div className="min-h-screen bg-gray-950 dark:bg-gray-50 text-white dark:text-gray-900 flex">
-            {/* Sidebar */}
+
             <Sidebar
                 selectedAsset={selectedAsset}
                 onSelect={(asset) => {
@@ -554,11 +554,11 @@ function AppContent() {
                 onOpenAdmin={() => setShowAdminPanel(true)}
             />
 
-            {/* Main Content */}
+
             <div className="flex-1 ml-80 p-8 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-50 dark:via-white dark:to-gray-50 min-h-screen">
                 <div className="max-w-7xl mx-auto space-y-6">
 
-                    {/* Karta Informacji o Aktywie (Pełna Szerokość) */}
+
                     {selectedAssetInfo ? (
                         <div className="bg-gray-800/50 dark:bg-white/80 backdrop-blur-sm border border-gray-700 dark:border-gray-200 rounded-2xl p-6 shadow-xl animate-fade-in">
                             <div className="flex items-center gap-3 mb-4">
@@ -600,10 +600,10 @@ function AppContent() {
                         </div>
                     )}
 
-                    {/* Sekcja Wykresu i Kontroli */}
+
                     <div className="space-y-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
                         <div className="bg-gray-800/50 dark:bg-white/80 backdrop-blur-sm border border-gray-700 dark:border-gray-200 rounded-2xl p-6 shadow-xl min-h-[500px]">
-                            {/* Nagłówek Wykresu ze Zintegrowanymi Kontrolkami */}
+
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                                 <div className="flex items-center gap-3">
                                     <div className="bg-purple-500/10 p-2 rounded-lg">
@@ -611,7 +611,7 @@ function AppContent() {
                                     </div>
                                     <h2 className="text-lg font-semibold text-white dark:text-gray-900">Wykres Cen i Prognoza</h2>
                                 </div>
-                                {/* Zintegrowane Kontrolki */}
+
                                 <div className="flex items-center gap-3">
                                     <div className="relative">
                                         <select
@@ -687,7 +687,7 @@ function AppContent() {
                             )}
                         </div>
 
-                        {/* Metryki i Analiza */}
+
                         {predictionData && (
                             <>
                                 <MetricsPanel
@@ -719,7 +719,7 @@ function AppContent() {
                         )}
                     </div>
 
-                    {/* Sekcja Korelacji */}
+
                     <div className="mt-12 animate-slide-up" style={{ animationDelay: '0.2s' }}>
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-bold text-white dark:text-gray-900 flex items-center gap-2">
@@ -735,7 +735,7 @@ function AppContent() {
                 </div>
             </div>
 
-            {/* Modale */}
+
             <AuthModal
                 isOpen={showAuthModal}
                 onClose={() => setShowAuthModal(false)}

@@ -16,11 +16,9 @@
 body {
   margin: 0;
   min-height: 100vh;
-  /* Domyślnie ciemne tło, ale pozwól Tailwind nadpisać */
   background-color: #0a0a0a;
 }
 
-/* Tło trybu jasnego */
 html:not(.dark) body {
   background-color: #f9fafb;
 }
@@ -29,20 +27,15 @@ html:not(.dark) body {
   min-height: 100vh;
 }
 
-/* Ukryj pasek przewijania dla Chrome, Safari i Opera */
 ::-webkit-scrollbar {
   display: none;
 }
 
-/* Ukryj pasek przewijania dla IE, Edge i Firefox */
 body {
   -ms-overflow-style: none;
-  /* IE i Edge */
   scrollbar-width: none;
-  /* Firefox */
 }
 
-/* Płynne przejścia */
 * {
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }

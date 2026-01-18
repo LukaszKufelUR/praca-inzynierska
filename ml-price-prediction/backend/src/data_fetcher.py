@@ -400,19 +400,31 @@ class DataFetcher:
 
     def get_correlation_data(self, assets: dict) -> pd.DataFrame:
         all_data = {}
-        
         print("Fetching data for correlation matrix...")
-        for symbol in assets.keys():
+        
+        def fetch_single(symbol):
             try:
+                # Use shorter period for correlation to be faster
                 df = self.fetch_data(symbol, period="1y")
-                all_data[symbol] = df.set_index('Date')['Close']
+                if df is not None and not df.empty:
+                    return symbol, df.set_index('Date')['Close']
             except Exception as e:
                 print(f"Could not fetch data for {symbol}: {e}")
-        
+            return symbol, None
+
+        # Use ThreadPoolExecutor for parallel execution
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_symbol = {executor.submit(fetch_single, sym): sym for sym in assets.keys()}
+            for future in concurrent.futures.as_completed(future_to_symbol):
+                try:
+                    sym, series = future.result()
+                    if series is not None:
+                        all_data[sym] = series
+                except Exception as e:
+                    print(f"Error processing correlation data: {e}")
+
         combined_df = pd.DataFrame(all_data)
-        
         combined_df = combined_df.ffill().bfill()
-        
         return combined_df
 
     def get_top_movers(self, assets_dict: dict) -> dict:
