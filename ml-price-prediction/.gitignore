@@ -65,4 +65,4 @@ logs/
 backend/ml_predictions.db
 
 # Docker
-.dockerignore
+# (Removed .dockerignore from here so it can be tracked)
