@@ -1,43 +1,35 @@
-# Stage 1: Builder - instalacja zależności
+# Stage 1: Builder
 FROM python:3.10-slim as builder
 
 WORKDIR /app
 
-# Instalacja tylko niezbędnych narzędzi budowania
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Kopiowanie requirements
 COPY requirements.txt .
 
-# Instalacja PyTorch CPU-only (zamiast wersji z CUDA - oszczędność ~2.5GB)
-RUN pip install --no-cache-dir --user \
+# Instalacja globalna w builderze
+RUN pip install --no-cache-dir \
     torch==2.0.0+cpu \
-    -f https://download.pytorch.org/whl/torch_stable.html
+    -f https://download.pytorch.org/whl/torch_stable.html && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Instalacja pozostałych pakietów
-RUN pip install --no-cache-dir --user -r requirements.txt
-
-# Stage 2: Runtime - minimalny obraz produkcyjny
+# Stage 2: Runtime
 FROM python:3.10-slim
 
 WORKDIR /app
 
-# Instalacja tylko runtime dependencies (bez build-essential)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Kopiowanie zainstalowanych pakietów z buildera
-COPY --from=builder /root/.local /root/.local
+# Kopiujemy całe site-packages z buildera do runtime
+COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Kopiowanie kodu aplikacji
 COPY . .
-
-# Upewnienie się, że pip packages są w PATH
-ENV PATH=/root/.local/bin:$PATH
 
 EXPOSE 8000
 
