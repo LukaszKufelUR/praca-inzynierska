@@ -8,6 +8,7 @@ const AdminChangePasswordModal = ({ isOpen, onClose, user, onPasswordChanged }) 
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -28,8 +29,13 @@ const AdminChangePasswordModal = ({ isOpen, onClose, user, onPasswordChanged }) 
             await api.changeUserPassword(user.id, newPassword);
             setNewPassword('');
             setConfirmPassword('');
-            onPasswordChanged();
-            onClose();
+            setSuccess(true);
+
+            setTimeout(() => {
+                setSuccess(false);
+                onPasswordChanged();
+                onClose();
+            }, 2000);
         } catch (err) {
             setError(err.response?.data?.detail || 'Nie udało się zmienić hasła');
         } finally {
@@ -98,6 +104,12 @@ const AdminChangePasswordModal = ({ isOpen, onClose, user, onPasswordChanged }) 
                     {error && (
                         <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3">
                             <p className="text-red-400 text-sm">{error}</p>
+                        </div>
+                    )}
+
+                    {success && (
+                        <div className="bg-green-500/10 border border-green-500 rounded-lg p-3 text-green-400 text-sm">
+                            Hasło zostało zmienione pomyślnie!
                         </div>
                     )}
 

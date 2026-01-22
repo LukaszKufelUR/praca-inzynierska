@@ -11,6 +11,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedUser, setSelectedUser] = useState(null);
+    const [activeTab, setActiveTab] = useState('users'); // 'users' | 'pending'
 
     useEffect(() => {
         if (isOpen) {
@@ -36,8 +37,26 @@ const AdminPanel = ({ isOpen, onClose }) => {
         }
     };
 
+    const formatDate = (dateString, includeTime = true) => {
+        if (!dateString) return '-';
+        // Backend zwraca UTC bez 'Z', więc dodajemy 'Z' żeby przeglądarka wiedziała że to UTC
+        const date = new Date(dateString.endsWith('Z') ? dateString : dateString + 'Z');
+        return includeTime ? date.toLocaleString('pl-PL') : date.toLocaleDateString('pl-PL');
+    };
+
     const handlePasswordChanged = () => {
         setSelectedUser(null);
+    };
+
+    const handleApproveUser = async (user) => {
+        try {
+            await api.approveUser(user.id);
+            alert(`Użytkownik ${user.email} został zatwierdzony.`);
+            loadData();
+        } catch (err) {
+            alert(err.response?.data?.detail || 'Nie udało się zatwierdzić użytkownika');
+            console.error(err);
+        }
     };
 
     const handleDeleteUser = async (user) => {
@@ -46,13 +65,18 @@ const AdminPanel = ({ isOpen, onClose }) => {
             return;
         }
 
-        if (!confirm(`Czy na pewno chcesz usunąć użytkownika ${user.email}?\n\nTa operacja jest nieodwracalna i usunie również wszystkie prognozy i ulubione tego użytkownika.`)) {
+        const message = user.is_approved
+            ? `Czy na pewno chcesz usunąć użytkownika ${user.email}?\n\nTa operacja jest nieodwracalna i usunie również wszystkie prognozy i ulubione tego użytkownika.`
+            : `Czy na pewno chcesz odrzucić rejestrację użytkownika ${user.email}?`;
+
+        if (!confirm(message)) {
             return;
         }
 
         try {
             await api.deleteUser(user.id);
-            alert(`Użytkownik ${user.email} został usunięty`);
+            const action = user.is_approved ? 'usunięty' : 'odrzucony';
+            alert(`Użytkownik ${user.email} został ${action}`);
             loadData();
         } catch (err) {
             alert(err.response?.data?.detail || 'Nie udało się usunąć użytkownika');
@@ -62,7 +86,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
 
     const generateUserReport = (user) => {
         const reportDate = new Date().toLocaleString('pl-PL');
-        const registrationDate = new Date(user.created_at).toLocaleString('pl-PL');
+        const registrationDate = formatDate(user.created_at);
 
         const htmlContent = `
 <!DOCTYPE html>
@@ -495,7 +519,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
                                     ${user.is_admin ? '👑 Admin' : '👤 User'}
                                 </span>
                             </td>
-                            <td>${new Date(user.created_at).toLocaleString('pl-PL')}</td>
+                            <td>${formatDate(user.created_at)}</td>
                             <td>${user.prediction_count}</td>
                             <td>${user.favorite_count}</td>
                         </tr>
@@ -563,6 +587,9 @@ const AdminPanel = ({ isOpen, onClose }) => {
 
     if (!isOpen) return null;
 
+    const activeUsers = users.filter(u => u.is_approved || u.is_admin);
+    const pendingUsers = users.filter(u => !u.is_approved && !u.is_admin);
+
     return (
         <>
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -607,7 +634,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
                                 </button>
                             </div>
                         ) : (
-                            <div className="space-y-6">
+                            <div className="space-y-8">
                                 {stats && (
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                         <div className="bg-gray-700/30 dark:bg-gray-100 rounded-lg p-4 border border-gray-600 dark:border-gray-300">
@@ -615,7 +642,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
                                                 <Users className="w-8 h-8 text-blue-400" />
                                                 <div>
                                                     <p className="text-sm text-gray-400 dark:text-gray-600">Użytkownicy</p>
-                                                    <p className="text-2xl font-bold text-white dark:text-gray-900">{stats.total_users}</p>
+                                                    <p className="text-2xl font-bold text-white dark:text-gray-900">{activeUsers.length}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -649,67 +676,143 @@ const AdminPanel = ({ isOpen, onClose }) => {
                                     </div>
                                 )}
 
-                                <div className="bg-gray-700/30 dark:bg-gray-100 rounded-lg border border-gray-600 dark:border-gray-300 overflow-hidden">
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full">
-                                            <thead className="bg-gray-800 dark:bg-gray-200">
-                                                <tr>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider">Email</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider">Rola</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider">Data rejestracji</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider">Prognozy</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider">Ulubione</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider">Akcje</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-700 dark:divide-gray-300">
-                                                {users.map((user) => (
-                                                    <tr key={user.id} className="hover:bg-gray-700/50 dark:hover:bg-gray-200">
-                                                        <td className="px-4 py-3 text-sm text-gray-200 dark:text-gray-900">{user.email}</td>
-                                                        <td className="px-4 py-3 text-sm">
-                                                            {user.is_admin ? (
-                                                                <span className="px-2 py-1 bg-purple-500/20 text-purple-400 dark:text-purple-600 rounded text-xs font-medium">Admin</span>
-                                                            ) : (
-                                                                <span className="px-2 py-1 bg-gray-500/20 text-gray-400 dark:text-gray-600 rounded text-xs font-medium">User</span>
-                                                            )}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-sm text-gray-300 dark:text-gray-700">
-                                                            {new Date(user.created_at).toLocaleDateString()}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-sm text-gray-300 dark:text-gray-700">{user.prediction_count}</td>
-                                                        <td className="px-4 py-3 text-sm text-gray-300 dark:text-gray-700">{user.favorite_count}</td>
-                                                        <td className="px-4 py-3 text-sm">
-                                                            <div className="flex items-center gap-2">
-                                                                <button
-                                                                    onClick={() => generateUserReport(user)}
-                                                                    className="flex items-center gap-1 px-3 py-1 bg-green-500/20 hover:bg-green-500/30 text-green-400 dark:text-green-600 rounded transition-colors"
-                                                                    title="Pobierz raport użytkownika"
-                                                                >
-                                                                    <Download className="w-4 h-4" />
-                                                                    Raport
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => setSelectedUser(user)}
-                                                                    className="flex items-center gap-1 px-3 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 dark:text-indigo-600 rounded transition-colors"
-                                                                >
-                                                                    <Key className="w-4 h-4" />
-                                                                    Zmień hasło
-                                                                </button>
-                                                                {!user.is_admin && (
-                                                                    <button
-                                                                        onClick={() => handleDeleteUser(user)}
-                                                                        className="flex items-center gap-1 px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 dark:text-red-600 rounded transition-colors"
-                                                                    >
-                                                                        <X className="w-4 h-4" />
-                                                                        Usuń
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                <div>
+                                    <div className="flex border-b border-gray-700 dark:border-gray-200 mb-6">
+                                        <button
+                                            onClick={() => setActiveTab('users')}
+                                            className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'users'
+                                                ? 'border-blue-500 text-blue-500'
+                                                : 'border-transparent text-gray-400 hover:text-gray-300'
+                                                }`}
+                                        >
+                                            Użytkownicy ({activeUsers.length})
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('pending')}
+                                            className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'pending'
+                                                ? 'border-blue-500 text-blue-500'
+                                                : 'border-transparent text-gray-400 hover:text-gray-300'
+                                                }`}
+                                        >
+                                            Oczekujące Rejestracje
+                                            {pendingUsers.length > 0 && (
+                                                <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                                    {pendingUsers.length}
+                                                </span>
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    <div className="bg-gray-700/30 dark:bg-gray-100 rounded-lg border border-gray-600 dark:border-gray-300 overflow-hidden">
+                                        <div className="overflow-x-auto">
+                                            {activeTab === 'users' ? (
+                                                <table className="w-full">
+                                                    <thead className="bg-gray-800 dark:bg-gray-200">
+                                                        <tr>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider">Email</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider">Rola</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider">Data rejestracji</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider">Prognozy</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider">Ulubione</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider">Akcje</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-700 dark:divide-gray-300">
+                                                        {activeUsers.map((user) => (
+                                                            <tr key={user.id} className="hover:bg-gray-700/50 dark:hover:bg-gray-200">
+                                                                <td className="px-4 py-3 text-sm text-gray-200 dark:text-gray-900">{user.email}</td>
+                                                                <td className="px-4 py-3 text-sm">
+                                                                    {user.is_admin ? (
+                                                                        <span className="px-2 py-1 bg-purple-500/20 text-purple-400 dark:text-purple-600 rounded text-xs font-medium">Admin</span>
+                                                                    ) : (
+                                                                        <span className="px-2 py-1 bg-gray-500/20 text-gray-400 dark:text-gray-600 rounded text-xs font-medium">User</span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-sm text-gray-300 dark:text-gray-700">
+                                                                    {formatDate(user.created_at)}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-sm text-gray-300 dark:text-gray-700">{user.prediction_count}</td>
+                                                                <td className="px-4 py-3 text-sm text-gray-300 dark:text-gray-700">{user.favorite_count}</td>
+                                                                <td className="px-4 py-3 text-sm">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <button
+                                                                            onClick={() => generateUserReport(user)}
+                                                                            className="flex items-center gap-1 px-3 py-1 bg-green-500/20 hover:bg-green-500/30 text-green-400 dark:text-green-600 rounded transition-colors"
+                                                                            title="Pobierz raport użytkownika"
+                                                                        >
+                                                                            <Download className="w-4 h-4" />
+                                                                            Raport
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => setSelectedUser(user)}
+                                                                            className="flex items-center gap-1 px-3 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 dark:text-indigo-600 rounded transition-colors"
+                                                                        >
+                                                                            <Key className="w-4 h-4" />
+                                                                            Zmień hasło
+                                                                        </button>
+                                                                        {!user.is_admin && (
+                                                                            <button
+                                                                                onClick={() => handleDeleteUser(user)}
+                                                                                className="flex items-center gap-1 px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 dark:text-red-600 rounded transition-colors"
+                                                                            >
+                                                                                <X className="w-4 h-4" />
+                                                                                Usuń
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            ) : (
+                                                <table className="w-full">
+                                                    <thead className="bg-gray-800 dark:bg-gray-200">
+                                                        <tr>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider">Email</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider">Data rejestracji</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider">Akcje</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-700 dark:divide-gray-300">
+                                                        {pendingUsers.length === 0 ? (
+                                                            <tr>
+                                                                <td colSpan="3" className="px-4 py-8 text-center text-gray-400 dark:text-gray-600">
+                                                                    Brak oczekujących rejestracji
+                                                                </td>
+                                                            </tr>
+                                                        ) : (
+                                                            pendingUsers.map((user) => (
+                                                                <tr key={user.id} className="hover:bg-gray-700/50 dark:hover:bg-gray-200">
+                                                                    <td className="px-4 py-3 text-sm text-gray-200 dark:text-gray-900 font-medium">{user.email}</td>
+                                                                    <td className="px-4 py-3 text-sm text-gray-300 dark:text-gray-700">
+                                                                        {formatDate(user.created_at)}
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-sm">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <button
+                                                                                onClick={() => handleApproveUser(user)}
+                                                                                className="flex items-center gap-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-sm"
+                                                                            >
+                                                                                <UserPlus className="w-4 h-4" />
+                                                                                Zatwierdź
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleDeleteUser(user)}
+                                                                                className="flex items-center gap-1 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 dark:text-red-600 rounded-lg transition-colors border border-red-500/20"
+                                                                            >
+                                                                                <X className="w-4 h-4" />
+                                                                                Odrzuć
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            ))
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

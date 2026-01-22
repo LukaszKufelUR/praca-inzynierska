@@ -17,7 +17,7 @@ class DataFetcher:
         self.base_url = "https://www.alphavantage.co/query"
     
     def fetch_data(self, symbol: str, period: str = "2y") -> pd.DataFrame:
-        cached_data = self._get_cached_data(symbol)
+        cached_data = self._get_cached_data(symbol, period)
         if cached_data is not None:
             return cached_data
         
@@ -29,12 +29,13 @@ class DataFetcher:
             if symbol.endswith('-USD') or symbol in ['BTC-USD', 'ETH-USD']:
                 df = self._fetch_crypto(av_symbol)
             else:
-                df = self._fetch_stock(av_symbol)
+                df = self._fetch_stock(av_symbol, period)
+
             
             if df.empty:
                 raise ValueError(f"No data found for symbol: {symbol}")
             
-            self._cache_data(symbol, df)
+            self._cache_data(symbol, df, period)
             
             return df
             
@@ -46,28 +47,26 @@ class DataFetcher:
     def _convert_symbol(self, symbol: str) -> str:
         return symbol
     
-    def _fetch_stock(self, symbol: str) -> pd.DataFrame:
+    def _fetch_stock(self, symbol: str, period: str = "2y") -> pd.DataFrame:
         try:
-            df = self._fetch_yahoo_raw(symbol)
+            df = self._fetch_yahoo_raw(symbol, period)
             if not df.empty:
-                print(f"✅ [DATA SOURCE] Successfully fetched {symbol} via Raw Yahoo API")
+
                 return df
         except Exception as e:
-            print(f"⚠️ [DATA SOURCE] Raw Yahoo API failed for {symbol}: {e}")
+            pass
 
         try:
             import yfinance as yf
             ticker = yf.Ticker(symbol)
-            df = ticker.history(period="2y")
+            df = ticker.history(period=period)
             
             if not df.empty:
-                print(f"✅ [DATA SOURCE] Successfully fetched {symbol} from yfinance library")
                 return self._process_yfinance_data(df)
         except Exception as e:
-            print(f"⚠️ [DATA SOURCE] yfinance library failed for {symbol}: {e}")
+            pass
 
         try:
-            print(f"🔄 [DATA SOURCE] Falling back to Alpha Vantage (Compact) for {symbol}...")
             params = {
                 'function': 'TIME_SERIES_DAILY',
                 'symbol': symbol,
@@ -82,7 +81,6 @@ class DataFetcher:
             data = response.json()
             
             if 'Time Series (Daily)' in data:
-                print(f"✅ [DATA SOURCE] Successfully fetched {symbol} from Alpha Vantage")
                 df = pd.DataFrame.from_dict(data['Time Series (Daily)'], orient='index')
                 df.index = pd.to_datetime(df.index)
                 df = df.sort_index()
@@ -104,18 +102,35 @@ class DataFetcher:
                 return df
                 
         except Exception as e:
-            print(f"⚠️ [DATA SOURCE] Alpha Vantage fallback failed for {symbol}: {e}")
+            pass
             
-        print(f"❌ [DATA SOURCE] All real data sources failed for {symbol}. Using sample data.")
         raise ValueError(f"All data sources failed for {symbol}")
 
-    def _fetch_yahoo_raw(self, symbol: str) -> pd.DataFrame:
+    def _fetch_yahoo_raw(self, symbol: str, period: str = "2y") -> pd.DataFrame:
         import time
+        from datetime import datetime, timedelta
         import requests
         import urllib3
         
+        # Mapowanie okresu na dni
+        days_map = {
+            "7d": 7,
+            "1mo": 30,
+            "3mo": 90,
+            "6mo": 180,
+            "1y": 365,
+            "2y": 730,
+            "5y": 1825,
+            "max": 36500 # 100 lat
+        }
+        
+        if period.endswith('d') and period[:-1].isdigit():
+            days = int(period[:-1])
+        else:
+            days = days_map.get(period, 730) # domyślnie 2 lata
+        
         end_ts = int(time.time())
-        start_ts = int((datetime.now() - timedelta(days=730)).timestamp())
+        start_ts = int((datetime.now() - timedelta(days=days)).timestamp())
         
         url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
         params = {
@@ -260,36 +275,33 @@ class DataFetcher:
         
         return df
     
-    def _get_cache_path(self, symbol: str) -> Path:
+    def _get_cache_path(self, symbol: str, period: str = "2y") -> Path:
         safe_symbol = symbol.replace('^', '').replace('-', '_')
-        return self.cache_dir / f"{safe_symbol}.pkl"
+        return self.cache_dir / f"{safe_symbol}_{period}_v2.pkl"
     
-    def _get_cached_data(self, symbol: str) -> pd.DataFrame | None:
-        cache_path = self._get_cache_path(symbol)
+    def _get_cached_data(self, symbol: str, period: str = "2y") -> pd.DataFrame | None:
+        cache_path = self._get_cache_path(symbol, period)
         
         if not cache_path.exists():
             return None
         
         cache_age = datetime.now() - datetime.fromtimestamp(cache_path.stat().st_mtime)
         if cache_age > timedelta(hours=CACHE_EXPIRY_HOURS):
-            print(f"Cache expired for {symbol}")
             return None
         
         try:
             with open(cache_path, 'rb') as f:
                 df = pickle.load(f)
-            print(f"Using cached data for {symbol}")
             return df
         except Exception as e:
             print(f"Error loading cache: {e}")
             return None
     
-    def _cache_data(self, symbol: str, df: pd.DataFrame):
-        cache_path = self._get_cache_path(symbol)
+    def _cache_data(self, symbol: str, df: pd.DataFrame, period: str = "2y"):
+        cache_path = self._get_cache_path(symbol, period)
         try:
             with open(cache_path, 'wb') as f:
                 pickle.dump(df, f)
-            print(f"Cached data for {symbol}")
         except Exception as e:
             print(f"Error caching data: {e}")
 
@@ -404,16 +416,16 @@ class DataFetcher:
         
         def fetch_single(symbol):
             try:
-                # Use shorter period for correlation to be faster
-                df = self.fetch_data(symbol, period="1y")
+                # Optimized: Use 6 months instead of 1y for faster loading
+                df = self.fetch_data(symbol, period="6mo")
                 if df is not None and not df.empty:
                     return symbol, df.set_index('Date')['Close']
             except Exception as e:
                 print(f"Could not fetch data for {symbol}: {e}")
             return symbol, None
 
-        # Use ThreadPoolExecutor for parallel execution
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        # Reduced max_workers to avoid Rate Limiting
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
             future_to_symbol = {executor.submit(fetch_single, sym): sym for sym in assets.keys()}
             for future in concurrent.futures.as_completed(future_to_symbol):
                 try:
@@ -484,7 +496,6 @@ class DataFetcher:
                 print(f"Parallel fetch failed: {e}")
 
             if len(results) < len(tickers) * 0.5:
-                print(f"⚠️ Low data yield ({len(results)}/{len(tickers)}). Filling missing with synthetic market movers.")
                 
                 existing_symbols = {r["symbol"] for r in results}
                 

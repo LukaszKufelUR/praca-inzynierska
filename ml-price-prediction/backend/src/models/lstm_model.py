@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import random
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import torch
@@ -71,6 +72,15 @@ class LSTMPredictor:
     def train(self, df: pd.DataFrame, symbol: str) -> dict:
         print(f"Trenowanie modelu LSTM dla {symbol} (różnice cen, 150 units)...")
         
+        random.seed(42)
+        torch.manual_seed(42)
+        np.random.seed(42)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(42)
+            torch.cuda.manual_seed_all(42)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        
         if len(df) <= self.lookback_days + 10:
             raise ValueError(f"Niewystarczająca ilość danych do treningu LSTM. Wymagane co najmniej {self.lookback_days + 10} dni, otrzymano {len(df)}")
 
@@ -141,17 +151,39 @@ class LSTMPredictor:
         test_predictions_unscaled = self.scaler.inverse_transform(test_predictions.reshape(-1, 1)).flatten()
         y_test_unscaled = self.scaler.inverse_transform(y_test_np.reshape(-1, 1)).flatten()
         
-        mae = mean_absolute_error(y_test_unscaled, test_predictions_unscaled)
-        rmse = np.sqrt(mean_squared_error(y_test_unscaled, test_predictions_unscaled))
+        # Rekonstrukcja cen z różnic (diffs)
+        # Musimy znaleźć cenę bazową (ostatni punkt treningowy / start testu)
+        # diff values są od indeksu 1.
+        # scaled_data zaczyna się od diff[0] (czyli df[1]-df[0])
+        # X przygotowane z lookback.
+        # split_idx odcina X.
+        
+        # Indeks w oryginalnym df odpowiadający początkowi y_test:
+        # 1 (bo diff) + self.lookback_days (bo sekwencje) + split_idx
+        test_start_idx = 1 + self.lookback_days + split_idx
+        
+        # Cena tuż przed pierwszym przewidywanym punktem
+        base_price = df['Close'].iloc[test_start_idx - 1]
+        
+        # Rekonstrukcja cen rzeczywistych i przewidzianych
+        reconstructed_actual = base_price + np.cumsum(y_test_unscaled)
+        reconstructed_predicted = base_price + np.cumsum(test_predictions_unscaled)
+        
+        mae = mean_absolute_error(reconstructed_actual, reconstructed_predicted)
+        rmse = np.sqrt(mean_squared_error(reconstructed_actual, reconstructed_predicted))
+        
+        # Calculate MAPE on prices (not diffs!)
+        epsilon = 1e-8 
+        mape = np.mean(np.abs((reconstructed_actual - reconstructed_predicted) / (reconstructed_actual + epsilon))) * 100
         
         self._save_model(symbol)
         
-        print(f"Model LSTM wytrenowany. Test RMSE: {rmse:.4f}, Test MAE: {mae:.4f}")
+        print(f"Model LSTM wytrenowany. Test RMSE: {rmse:.4f}, Test MAE: {mae:.4f}, Test MAPE: {mape:.2f}%")
         
         return {
             'mae': float(mae),
             'rmse': float(rmse),
-            'mape': 0.0
+            'mape': float(mape)
         }
     
     def predict(self, df: pd.DataFrame, periods: int) -> pd.DataFrame:

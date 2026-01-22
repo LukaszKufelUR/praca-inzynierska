@@ -35,10 +35,12 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
         try {
             if (isLogin) {
                 await login(email, password);
+                onClose();
             } else {
                 await register(email, password);
+                alert("Rejestracja pomyślna. Twoje konto oczekuje na zatwierdzenie przez administratora.");
+                onClose();
             }
-            onClose();
             setEmail('');
             setPassword('');
             setConfirmPassword('');

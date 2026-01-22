@@ -27,10 +27,11 @@ export const api = {
         return response.data;
     },
 
-    getPredictions: async (symbol, periods = 30) => {
+    getPredictions: async (symbol, periods = 30, trainingPeriod = '2y') => {
         const response = await axios.post(`${API_BASE_URL}/api/predict/both`, {
             symbol,
-            periods
+            periods,
+            training_period: trainingPeriod
         });
         return response.data;
     },
@@ -137,6 +138,11 @@ export const api = {
         return response.data;
     },
 
+    approveUser: async (userId) => {
+        const response = await axiosInstance.put(`/api/admin/users/${userId}/approve`);
+        return response.data;
+    },
+
     getAdminStats: async () => {
         const response = await axiosInstance.get('/api/admin/stats');
         return response.data;
@@ -144,6 +150,13 @@ export const api = {
 
     deleteUser: async (userId) => {
         const response = await axiosInstance.delete(`/api/admin/users/${userId}`);
+        return response.data;
+    },
+
+    deleteAccount: async (password) => {
+        const response = await axiosInstance.delete('/api/auth/me', {
+            data: { password }
+        });
         return response.data;
     }
 };

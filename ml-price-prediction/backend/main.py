@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import traceback
 import json
 import numpy as np
@@ -23,7 +23,21 @@ from database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
 
-# Auto-create admin user on startup
+# Auto-migracja dla is_approved
+from sqlalchemy import text
+try:
+    with engine.connect() as connection:
+        connection.execute(text("ALTER TABLE users ADD COLUMN is_approved INTEGER DEFAULT 0"))
+        connection.commit()
+        # Ustawiamy 1 dla istniejących użytkowników (zgodność wsteczna)
+        connection.execute(text("UPDATE users SET is_approved = 1"))
+        connection.commit()
+        print("✅ Migracja: Dodano kolumnę is_approved i zatwierdzono istniejących użytkowników.")
+except Exception as e:
+    # Kolumna prawdopodobnie już istnieje
+    pass
+
+
 import seed_admin
 seed_admin.create_initial_admin()
 
@@ -55,8 +69,9 @@ data_fetcher = DataFetcher()
 class PredictionRequest(BaseModel):
     symbol: str
     periods: int = 30
-    period: str = "2y"
+    training_period: str = "2y"
     model_type: str = "prophet"
+
 
 class PredictionResponse(BaseModel):
     symbol: str
@@ -130,10 +145,10 @@ async def get_historical_data(symbol: str, period: str = "2y"):
 
 @app.post("/api/predict/prophet")
 async def predict_prophet(request: PredictionRequest):
-    if request.periods not in PREDICTION_HORIZONS:
+    if not (7 <= request.periods <= 30):
         raise HTTPException(
             status_code=400, 
-            detail=f"Nieprawidłowy okres. Dostępne: {PREDICTION_HORIZONS}"
+            detail=f"Nieprawidłowy okres prognozy. Dozwolony zakres: 7-30 dni."
         )
     
     try:
@@ -163,27 +178,52 @@ async def predict_lstm(request: PredictionRequest):
 
 @app.post("/api/predict/both")
 async def predict_both(request: PredictionRequest):
-    if request.periods not in PREDICTION_HORIZONS:
+    if not (7 <= request.periods <= 30):
         raise HTTPException(
             status_code=400, 
-            detail=f"Nieprawidłowy okres. Dostępne: {PREDICTION_HORIZONS}"
+            detail=f"Nieprawidłowy okres prognozy. Dozwolony zakres: 7-30 dni."
         )
     
     try:
-        df = data_fetcher.fetch_data(request.symbol, request.period)
-        df = data_fetcher.preprocess_data(df)
+        print(f"🔍 DEBUG: Generowanie prognozy dla {request.symbol}")
+        print(f"📊 Okres danych treningowych: {request.training_period}")
+        print(f"📅 Okres prognozy: {request.periods} dni")
         
+        # ZAWSZE pobieramy 5 lat danych dla wykresu (lub max dostępnych)
+        print(f"📥 Pobieranie pełnej historii (5 lat) dla wykresu...")
+        df_full = data_fetcher.fetch_data(request.symbol, period="5y")
+        df_full = data_fetcher.preprocess_data(df_full)
+        
+        # Przygotowanie danych treningowych (wycinek)
+        df_train = df_full.copy()
+        training_start_date = None
+        
+        if request.training_period.endswith('d'):
+            try:
+                training_days = int(request.training_period[:-1])
+                cutoff_date = df_full['Date'].max() - timedelta(days=training_days)
+                df_train = df_full[df_full['Date'] >= cutoff_date].copy()
+                
+                if not df_train.empty:
+                    training_start_date = df_train['Date'].iloc[0].strftime('%Y-%m-%d')
+                    print(f"✂️ Docięto dane treningowe do {training_days} dni. Start: {training_start_date}")
+                    print(f"   Pełne dane: {len(df_full)} wierszy, Treningowe: {len(df_train)} wierszy")
+            except Exception as e:
+                print(f"⚠️ Błąd podczas cięcia danych treningowych: {e}")
+        
+        # Trenujemy modele na dociętym zbiorze (df_train)
         prophet = ProphetPredictor()
-        prophet_metrics = prophet.train(df, request.symbol)
+        prophet_metrics = prophet.train(df_train, request.symbol)
         prophet_forecast = prophet.predict(request.periods)
         prophet_forecast['ds'] = prophet_forecast['ds'].dt.strftime('%Y-%m-%d')
         
         lstm = LSTMPredictor()
-        lstm_metrics = lstm.train(df, request.symbol)
-        lstm_forecast = lstm.predict(df, request.periods)
+        lstm_metrics = lstm.train(df_train, request.symbol)
+        lstm_forecast = lstm.predict(df_train, request.periods) # LSTM potrzebuje ostatnich danych do sekwencji
         lstm_forecast['ds'] = lstm_forecast['ds'].dt.strftime('%Y-%m-%d')
         
-        historical = df[['Date', 'Close']].copy()
+        # Zwracamy PEŁNĄ historię (df_full) na wykres
+        historical = df_full[['Date', 'Close']].copy()
         historical['Date'] = historical['Date'].dt.strftime('%Y-%m-%d')
         
         def clean_nans(data_list):
@@ -203,6 +243,7 @@ async def predict_both(request: PredictionRequest):
             "symbol": request.symbol,
             "name": ASSETS.get(request.symbol, {}).get("name", request.symbol),
             "historical_data": clean_nans(historical.to_dict('records')),
+            "training_start_date": training_start_date,
             "prophet": {
                 "predictions": clean_nans(prophet_forecast.to_dict('records')),
                 "metrics": prophet_metrics
@@ -308,6 +349,13 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         raise HTTPException(
             status_code=401,
             detail="Niepoprawny email lub hasło",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    if user.is_approved == 0:
+        raise HTTPException(
+            status_code=403,
+            detail="Twoje konto oczekuje na zatwierdzenie przez administratora",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -548,6 +596,26 @@ async def change_password(
     
     return {"message": "Password changed successfully"}
 
+@app.delete("/api/auth/me")
+async def delete_my_account(
+    request: schemas.DeleteAccountRequest,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.is_admin:
+        raise HTTPException(
+            status_code=403, 
+            detail="Administrator nie może usunąć swojego konta w ten sposób"
+        )
+
+    if not auth.verify_password(request.password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Niepoprawne hasło")
+    
+    db.delete(current_user)
+    db.commit()
+    
+    return {"message": "Account deleted successfully"}
+
 @app.get("/api/admin/users", response_model=List[schemas.AdminUserListItem])
 async def get_all_users(
     admin_user: models.User = Depends(auth.get_current_admin_user),
@@ -569,12 +637,28 @@ async def get_all_users(
             "id": user.id,
             "email": user.email,
             "is_admin": user.is_admin,
+            "is_approved": user.is_approved,
             "created_at": user.created_at,
             "prediction_count": prediction_count,
             "favorite_count": favorite_count
         })
     
     return result
+
+@app.put("/api/admin/users/{user_id}/approve")
+async def admin_approve_user(
+    user_id: int,
+    admin_user: models.User = Depends(auth.get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Nie znaleziono użytkownika")
+    
+    user.is_approved = 1
+    db.commit()
+    
+    return {"message": f"Konto użytkownika {user.email} zostało zatwierdzone."}
 
 @app.put("/api/admin/users/{user_id}/password")
 async def admin_change_user_password(

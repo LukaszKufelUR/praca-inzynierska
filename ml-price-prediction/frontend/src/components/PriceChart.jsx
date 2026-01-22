@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ReferenceArea } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ReferenceArea, ReferenceLine } from 'recharts';
 import InfoTooltip from './InfoTooltip';
 
-const PriceChart = ({ historicalData, prophetPredictions, lstmPredictions, indicators, assetName, historicalDataRange = 0 }) => {
+const PriceChart = ({ historicalData, prophetPredictions, lstmPredictions, indicators, assetName, historicalDataRange = 0, setHistoricalDataRange, trainingStartDate }) => {
     const [showBollinger, setShowBollinger] = useState(false);
     const [visibleLines, setVisibleLines] = useState({
         historical: true,
@@ -148,8 +148,7 @@ const PriceChart = ({ historicalData, prophetPredictions, lstmPredictions, indic
                     <InfoTooltip text="Wstęgi Bollingera pokazują zmienność rynku. Cena zazwyczaj porusza się wewnątrz wstęg. Wyjście poza nie może sugerować odwrócenie trendu." />
                     <button
                         onClick={() => setShowBollinger(!showBollinger)}
-                        className={`px-3 py-1 rounded text-sm font-medium transition-colors ${showBollinger ? 'bg-blue-600 text-white' : 'bg-gray-700 dark:bg-gray-200 text-gray-300 dark:text-gray-700 hover:bg-gray-600 dark:hover:bg-gray-300'
-                            }`}
+                        className={`px-3 py-1 rounded text-sm font-medium transition-colors ${showBollinger ? 'bg-blue-600 text-white' : 'bg-gray-700 dark:bg-gray-200 text-gray-300 dark:text-gray-700 hover:bg-gray-600 dark:hover:bg-gray-300'}`}
                     >
                         {showBollinger ? 'Ukryj Wstęgi Bollingera' : 'Pokaż Wstęgi Bollingera'}
                     </button>
@@ -256,6 +255,28 @@ const PriceChart = ({ historicalData, prophetPredictions, lstmPredictions, indic
                             <ReferenceArea x1={refAreaLeft} x2={refAreaRight} strokeOpacity={0.3} fill="#6366f1" fillOpacity={0.3} />
                         )
                     }
+                    {trainingStartDate && historicalData && historicalData.length > 0 && (
+                        <>
+                            <ReferenceArea
+                                x1={trainingStartDate}
+                                x2={historicalData[historicalData.length - 1].Date}
+                                fill="#a5b4fc"
+                                fillOpacity={0.06}
+                            />
+                            <ReferenceLine
+                                x={trainingStartDate}
+                                stroke="#818cf8"
+                                strokeDasharray="3 3"
+                                label={{
+                                    value: "Początek trenowania modelu",
+                                    position: 'insideTopLeft',
+                                    fill: '#818cf8',
+                                    fontSize: 12,
+                                    fontWeight: 500
+                                }}
+                            />
+                        </>
+                    )}
                 </LineChart >
             </ResponsiveContainer >
 

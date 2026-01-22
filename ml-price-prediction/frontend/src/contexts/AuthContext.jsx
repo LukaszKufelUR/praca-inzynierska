@@ -85,7 +85,8 @@ export const AuthProvider = ({ children }) => {
 
         const userData = await response.json();
 
-        await login(email, password);
+        // Nie logujemy automatycznie, bo konto musi być zatwierdzone
+        // await login(email, password); 
 
         return userData;
     };

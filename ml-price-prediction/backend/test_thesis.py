@@ -93,6 +93,37 @@ def run_tests():
             print_result("Sec: Odmowa dostępu", False, error=f"Otrzymano kod {resp.status_code}")
     except Exception as e:
         print_result("Sec: Odmowa dostępu", False, error=str(e))
+
+    # Test usuwania konta
+    start = time.time()
+    try:
+        # 1. Stwórz tymczasowego użytkownika do usunięcia
+        del_email = f"delete_me_{random.randint(1000,9999)}@example.com"
+        del_pass = "DeleteMe123!"
+        
+        requests.post(f"{BASE_URL}/api/auth/register", json={"email": del_email, "password": del_pass})
+        login_resp = requests.post(f"{BASE_URL}/api/auth/login", data={"username": del_email, "password": del_pass})
+        del_token = login_resp.json()["access_token"]
+        
+        # 2. Spróbuj usunąć konto
+        del_headers = {"Authorization": f"Bearer {del_token}"}
+        # Payload musi zgadzać się z DeleteAccountRequest (password: str)
+        # UWAGA: W main.py endpoint DELETE /api/auth/me przyjmuje request body.
+        # Requests.delete obsługuje json/data w nowszych wersjach lub trzeba użyć request()
+        del_resp = requests.request("DELETE", f"{BASE_URL}/api/auth/me", json={"password": del_pass}, headers=del_headers)
+        
+        if del_resp.status_code == 200:
+            # 3. Sprawdź czy token wygasł/użytkownik nie istnieje (próba ponownego pobrania profilu)
+            check_resp = requests.get(f"{BASE_URL}/api/auth/me", headers=del_headers)
+            if check_resp.status_code == 401:
+                print_result("Usuwanie konta i weryfikacja wylogowania", True, time.time() - start)
+            else:
+                 print_result("Usuwanie konta (Konto nadal aktywne?)", False, error=f"Status weryfikacji: {check_resp.status_code}")
+        else:
+             print_result("Usuwanie konta", False, error=f"Status API: {del_resp.status_code} - {del_resp.text}")
+
+    except Exception as e:
+        print_result("Usuwanie konta", False, error=str(e))
         
     print(f"\n{Color.BLUE}=== ZAKOŃCZONO TESTY ==={Color.END}")
 

@@ -14,6 +14,7 @@ class UserLogin(UserBase):
 class UserResponse(UserBase):
     id: int
     is_admin: int
+    is_approved: int
     created_at: datetime
 
     class Config:
@@ -82,12 +83,16 @@ class AdminUserListItem(BaseModel):
     id: int
     email: str
     is_admin: int
+    is_approved: int
     created_at: datetime
     prediction_count: int
     favorite_count: int
 
     class Config:
         from_attributes = True
+
+class DeleteAccountRequest(BaseModel):
+    password: str
 
 class AdminChangePasswordRequest(BaseModel):
     new_password: str

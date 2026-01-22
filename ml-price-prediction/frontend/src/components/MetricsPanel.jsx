@@ -19,6 +19,7 @@ const MetricsPanel = ({ prophetMetrics, lstmMetrics }) => {
 
     const ComparisonCard = ({ metric, prophetValue, lstmValue }) => {
         const prophetBetter = prophetValue < lstmValue;
+        const diff = Math.abs(prophetValue - lstmValue).toFixed(2);
 
         return (
             <div className="bg-gray-800/50 dark:bg-gray-200 rounded-lg p-4 border border-gray-700 dark:border-gray-300">
@@ -30,7 +31,6 @@ const MetricsPanel = ({ prophetMetrics, lstmMetrics }) => {
                             <span className={`font-semibold ${prophetBetter ? 'text-green-400 dark:text-green-600' : 'text-gray-300 dark:text-gray-900'}`}>
                                 {prophetValue.toFixed(2)}
                             </span>
-                            {prophetBetter && <TrendingUp className="w-4 h-4 text-green-400" />}
                         </div>
                     </div>
                     <div className="flex items-center justify-between">
@@ -39,8 +39,11 @@ const MetricsPanel = ({ prophetMetrics, lstmMetrics }) => {
                             <span className={`font-semibold ${!prophetBetter ? 'text-green-400 dark:text-green-600' : 'text-gray-300 dark:text-gray-900'}`}>
                                 {lstmValue.toFixed(2)}
                             </span>
-                            {!prophetBetter && <TrendingUp className="w-4 h-4 text-green-400" />}
                         </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-700 dark:border-gray-300 mt-2">
+                        <span className="text-xs text-gray-500 dark:text-gray-500">Różnica</span>
+                        <span className="text-sm font-medium text-primary-400 dark:text-primary-600">{diff}</span>
                     </div>
                 </div>
             </div>

@@ -10,6 +10,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_admin = Column(Integer, default=0)
+    is_approved = Column(Integer, default=0)  # 0 - oczekuje, 1 - zatwierdzone
     created_at = Column(DateTime, default=datetime.utcnow)
 
     favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")

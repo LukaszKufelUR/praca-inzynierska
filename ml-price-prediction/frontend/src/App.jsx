@@ -12,7 +12,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import AuthModal from './components/AuthModal';
 import UserDropdown from './components/UserDropdown';
-import ChangePasswordModal from './components/ChangePasswordModal';
+import SettingsModal from './components/SettingsModal';
 import FavoriteButton from './components/FavoriteButton';
 import PredictionHistoryModal from './components/PredictionHistoryModal';
 import SavePredictionModal from './components/SavePredictionModal';
@@ -32,13 +32,16 @@ function AppContent() {
     const [indicators, setIndicators] = useState(null);
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [authMode, setAuthMode] = useState('login');
-    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [showAdminPanel, setShowAdminPanel] = useState(false);
     const [favorites, setFavorites] = useState([]);
     const [savingPrediction, setSavingPrediction] = useState(false);
     const [historicalDataRange, setHistoricalDataRange] = useState(90);
+    const [trainingDataPeriod, setTrainingDataPeriod] = useState(2);
+
+
 
     useEffect(() => {
         loadAssets();
@@ -46,6 +49,8 @@ function AppContent() {
         if (isAuthenticated) {
             loadFavorites();
             loadUserSettings();
+        } else {
+            setFavorites([]);
         }
     }, [isAuthenticated]);
 
@@ -509,6 +514,9 @@ function AppContent() {
         }
     }, [predictionPeriod, isAuthenticated]);
 
+
+
+
     const handlePredict = async () => {
         if (!selectedAsset) return;
 
@@ -516,9 +524,12 @@ function AppContent() {
         setError(null);
 
         try {
+            const trainingPeriodDays = Math.round(trainingDataPeriod * 365);
+            const trainingPeriodString = `${trainingPeriodDays}d`;
+
             const [predData, indData] = await Promise.all([
-                api.getPredictions(selectedAsset, predictionPeriod),
-                api.getIndicators(selectedAsset)
+                api.getPredictions(selectedAsset, predictionPeriod, trainingPeriodString),
+                api.getIndicators(selectedAsset, "5y")
             ]);
             setPredictionData(predData);
             setIndicators(indData.indicators);
@@ -549,7 +560,7 @@ function AppContent() {
                 isAuthenticated={isAuthenticated}
                 onLogin={() => { setAuthMode('login'); setShowAuthModal(true); }}
                 onRegister={() => { setAuthMode('register'); setShowAuthModal(true); }}
-                onOpenSettings={() => setShowPasswordModal(true)}
+                onOpenSettings={() => setShowSettingsModal(true)}
                 onOpenHistory={() => setShowHistoryModal(true)}
                 onOpenAdmin={() => setShowAdminPanel(true)}
             />
@@ -613,34 +624,45 @@ function AppContent() {
                                 </div>
 
                                 <div className="flex items-center gap-3">
-                                    <div className="relative">
-                                        <select
-                                            value={historicalDataRange}
-                                            onChange={(e) => setHistoricalDataRange(Number(e.target.value))}
-                                            className="appearance-none bg-gray-700 dark:bg-gray-100 border border-gray-600 dark:border-gray-300 rounded-lg pl-4 pr-10 py-2 text-sm text-white dark:text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all cursor-pointer hover:bg-gray-600 dark:hover:bg-gray-200"
-                                        >
-                                            <option value={30}>30 dni historii</option>
-                                            <option value={60}>60 dni historii</option>
-                                            <option value={90}>90 dni historii</option>
-                                            <option value={180}>180 dni historii</option>
-                                        </select>
-                                        <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-400">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                    <div className="flex flex-col gap-1 min-w-[150px]">
+                                        <div className="flex justify-between text-xs text-gray-400 dark:text-gray-600">
+                                            <span>Dane treningowe</span>
+                                            <span className="font-medium text-primary-400">
+                                                {(() => {
+                                                    const val = trainingDataPeriod;
+                                                    if (val === 0.5) return "6 miesięcy";
+                                                    if (val % 1 !== 0) return `${val} roku`;
+
+                                                    if (val === 1) return "1 rok";
+                                                    if (val >= 2 && val <= 4) return `${val} lata`;
+                                                    return `${val} lat`;
+                                                })()}
+                                            </span>
                                         </div>
+                                        <input
+                                            type="range"
+                                            min="0.5"
+                                            max="5"
+                                            step="0.5"
+                                            value={trainingDataPeriod}
+                                            onChange={(e) => setTrainingDataPeriod(Number(e.target.value))}
+                                            className="w-full h-2 bg-gray-700 dark:bg-gray-300 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                                        />
                                     </div>
-                                    <div className="relative">
-                                        <select
+                                    <div className="flex flex-col gap-1 min-w-[150px]">
+                                        <div className="flex justify-between text-xs text-gray-400 dark:text-gray-600">
+                                            <span>Okres prognozy</span>
+                                            <span className="font-medium text-primary-400">{predictionPeriod} Dni</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="7"
+                                            max="30"
+                                            step="1"
                                             value={predictionPeriod}
                                             onChange={(e) => setPredictionPeriod(Number(e.target.value))}
-                                            className="appearance-none bg-gray-700 dark:bg-gray-100 border border-gray-600 dark:border-gray-300 rounded-lg pl-4 pr-10 py-2 text-sm text-white dark:text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all cursor-pointer hover:bg-gray-600 dark:hover:bg-gray-200"
-                                        >
-                                            <option value={7}>7 Dni</option>
-                                            <option value={14}>14 Dni</option>
-                                            <option value={30}>30 Dni</option>
-                                        </select>
-                                        <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-400">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                                        </div>
+                                            className="w-full h-2 bg-gray-700 dark:bg-gray-300 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                                        />
                                     </div>
 
                                     <button
@@ -663,6 +685,58 @@ function AppContent() {
                                 </div>
                             </div>
 
+
+                            <div className="mb-4">
+                                <div className="bg-gray-800/50 dark:bg-gray-100 backdrop-blur-sm rounded-xl p-4 border border-gray-700 dark:border-gray-300 shadow-2xl">
+                                    <div className="flex justify-end items-center">
+                                        <div className="flex gap-4 items-center">
+                                            <div className="flex flex-col gap-1 min-w-[200px]">
+                                                <div className="flex justify-between text-xs text-gray-400 dark:text-gray-600">
+                                                    <span>Zakres wykresu</span>
+                                                    <span className="font-medium text-primary-400">
+                                                        {(() => {
+                                                            const months = Math.round(historicalDataRange / 30);
+                                                            if (months < 12) {
+                                                                if (months === 1) return "1 miesiąc";
+                                                                if (months >= 2 && months <= 4) return `${months} miesiące`;
+                                                                return `${months} miesięcy`;
+                                                            } else {
+                                                                const years = Math.round(months / 12);
+                                                                if (years === 1) return "1 rok";
+                                                                if (years >= 2 && years <= 4) return `${years} lata`;
+                                                                return `${years} lat`;
+                                                            }
+                                                        })()}
+                                                    </span>
+                                                </div>
+                                                <input
+                                                    type="range"
+                                                    min="0"
+                                                    max="15"
+                                                    step="1"
+                                                    value={(() => {
+                                                        const months = Math.round(historicalDataRange / 30);
+                                                        if (months <= 12) return months - 1;
+                                                        return 10 + (months / 12);
+                                                    })()}
+                                                    onChange={(e) => {
+                                                        const val = Number(e.target.value);
+                                                        let months;
+                                                        if (val < 12) {
+                                                            months = val + 1;
+                                                        } else {
+                                                            months = (val - 10) * 12;
+                                                        }
+                                                        setHistoricalDataRange(months * 30);
+                                                    }}
+                                                    className="w-full h-2 bg-gray-700 dark:bg-gray-300 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             {error ? (
                                 <div className="h-[400px] flex items-center justify-center text-red-400 bg-red-500/5 rounded-xl border border-red-500/10">
                                     <div className="flex items-center gap-2">
@@ -673,11 +747,13 @@ function AppContent() {
                             ) : predictionData ? (
                                 <PriceChart
                                     historicalData={predictionData.historical_data}
+                                    trainingStartDate={predictionData.training_start_date}
                                     prophetPredictions={predictionData.prophet.predictions}
                                     lstmPredictions={predictionData.lstm.predictions}
                                     indicators={indicators}
                                     assetName={predictionData.name}
                                     historicalDataRange={historicalDataRange}
+                                    setHistoricalDataRange={setHistoricalDataRange}
                                 />
                             ) : (
                                 <div className="h-[400px] flex flex-col items-center justify-center text-gray-500 border-2 border-dashed border-gray-700 rounded-xl">
@@ -741,7 +817,7 @@ function AppContent() {
                 onClose={() => setShowAuthModal(false)}
                 initialMode={authMode}
             />
-            <ChangePasswordModal isOpen={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
+            <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
             <PredictionHistoryModal
                 isOpen={showHistoryModal}
                 onClose={() => setShowHistoryModal(false)}
