@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: gieldomat-backend
+    volumes:
+      - ./backend/ml_predictions.db:/app/ml_predictions.db
+    ports:
+      - "8000:8000"
+    restart: always
+
+  frontend:
+    build: ./frontend
+    container_name: gieldomat-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
