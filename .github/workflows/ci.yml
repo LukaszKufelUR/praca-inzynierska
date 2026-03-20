@@ -22,11 +22,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd ml-price-prediction/backend
+          cd backend
           pip install -r requirements.txt
 
       - name: Build Backend Docker Image
-        run: docker build -t gieldomat-backend ./ml-price-prediction/backend
+        run: docker build -t gieldomat-backend ./backend
 
   build-frontend:
     name: Build Frontend Docker Image
@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Frontend Docker Image
-        run: docker build -t gieldomat-frontend ./ml-price-prediction/frontend
+        run: docker build -t gieldomat-frontend ./frontend
 
   docker-compose:
     name: Test Docker Compose
@@ -50,7 +50,6 @@ jobs:
 
       - name: Build and start services
         run: docker-compose up --build -d
-        working-directory: ml-price-prediction
 
       - name: Wait for services to start
         run: sleep 15
@@ -66,4 +65,3 @@ jobs:
 
       - name: Stop services
         run: docker-compose down
-        working-directory: ml-price-prediction
